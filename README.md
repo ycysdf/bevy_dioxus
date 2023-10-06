@@ -23,7 +23,7 @@ WIP：项目处于非常早期的阶段
 
 `FnOnce(&mut World) + Send + 'static` 实现了 `Command`，所以示例中传入了一个闭包函数，并使用`&mut World`对数据进行修改
 
-此实例需要你点击 refresh 按钮 进行手动刷新数据。
+因为当前 bevy 无法监听任意实体的 创建与删除，所以此实例需要你手动点击 refresh 按钮来手动刷新
 
 ```rust
 #![allow(non_snake_case)]
