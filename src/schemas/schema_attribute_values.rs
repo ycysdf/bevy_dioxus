@@ -158,6 +158,7 @@ impl From<DomAttributeValue> for Option<Color> {
         }
     }
 }
+
 impl From<DomAttributeValue> for Option<f64> {
     fn from(value: DomAttributeValue) -> Self {
         match value {
@@ -608,7 +609,7 @@ impl From<DomAttributeValue> for Option<TextSections> {
 impl From<DomAttributeValue> for Option<ZIndex> {
     fn from(value: DomAttributeValue) -> Self {
         match value {
-            // DomAttributeValue::Text(value) => ,
+            DomAttributeValue::Int(value) => Some(ZIndex::Global(value as i32)),
             DomAttributeValue::Any(value) => {
                 <dyn Reflect>::downcast::<ZIndex>(value).ok().map(|n| *n)
             }
