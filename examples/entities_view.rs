@@ -155,11 +155,9 @@ fn get_entity_info(entity_ref: EntityRef<'static>) -> EntityInfo {
 #[inline_props]
 fn EntityItem(cx: Scope, data: EntityInfo, level: u8) -> Element {
     let is_expand = use_state(cx, || false);
-
     let handle_expand_click = |_| {
         is_expand.set(!**is_expand);
     };
-
     render! {
         view {
             name: "entity-item",

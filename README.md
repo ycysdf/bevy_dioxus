@@ -11,9 +11,17 @@ WIP：项目处于非常早期的阶段
 - 使用 bevy 进行渲染
 - 支持 tailwind（不完整）
 
-## 简单示例
+## 简单示例、教程
 
 一个树状实体列表的示例
+
+如示例所示：
+
+使用`world_call`方法传入回调函数，从`World`获取数据
+
+使用`use_cmd_sender` 获取 命令发送器，调用 `send_cmd` 方法，发送一个命令（即实现了`Command`）
+
+`FnOnce(&mut World) + Send + 'static` 实现了 `Command`，所以示例中传入了一个闭包函数
 
 ```rust
 #![allow(non_snake_case)]
@@ -213,6 +221,8 @@ fn EntityItem(cx: Scope, data: EntityInfo, level: u8) -> Element {
     }
 }
 ```
+
+
 
 
 ## 依赖库
