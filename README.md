@@ -226,6 +226,16 @@ fn EntityItem(cx: Scope, data: EntityInfo, level: u8) -> Element {
 }
 ```
 
+## 安装
+
+目前此库没有发布到 crate
+
+所以你需要这样使用此库
+
+```toml
+bevy_dioxus = { git = "https://github.com/ycysdf/bevy_dioxus" }
+```
+
 ## 依赖库
 
 - 提供事件支持：https://github.com/aevyrie/bevy_mod_picking/
