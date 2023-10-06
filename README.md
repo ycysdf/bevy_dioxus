@@ -20,99 +20,36 @@ WIP：项目处于非常早期的阶段
 
 use bevy_dioxus::prelude::*;
 
-#[derive(PartialEq)]
-struct EntityInfo {
-    id: Entity,
-    name: &'static str,
-    has_child: bool,
+fn main() {
+    let mut app = App::new();
+    app.add_plugins((
+        DefaultPlugins,
+        DioxusPlugin::new(Root)
+    )).add_systems(Startup, setup);
+
+    app.run();
 }
 
-#[inline_props]
-fn EntityItem(cx: Scope, data: EntityInfo, level: u8) -> Element {
-    let is_expand = use_state(cx, || false);
-
-    let handle_expand_click = |_| {
-        is_expand.set(!**is_expand);
-    };
-
-    render! {
-        view {
-            name: "entity-item",
-            class: "p-1 hover:bg-gray-100 items-center",
-            for _ in (0..*level) {
-                view {
-                    name: "entity-item-indicator",
-                    class: "w-5 h-5 items-center justify-center",
-                    "|"
-                }
-            }
-            view {
-                name: "entity-item-expand-btn",
-                class: "w-5 h-5 items-center justify-center bg-transparent hover:bg-gray-200",
-                visibility: if data.has_child { "visible" } else { "hidden" },
-                rotation: if **is_expand { 90 } else { 0 },
-                onclick: handle_expand_click,
-                ">"
-            }
-            view {
-                name: "entity-item-icon",
-                class: "w-5 h-5 items-center justify-center bg-transparent hover:bg-gray-200",
-                "E"
-            }
-            "{data.name} {data.id:?}"
-        }
-        if **is_expand {
-            rsx!(EntityItemChildren {
-                entity: data.id,
-                level: level+1
-            })
-        }
-    }
-}
-
-fn get_entity_info(entity_ref: EntityRef<'static>) -> EntityInfo {
-    EntityInfo {
-        id: entity_ref.id(),
-        name: entity_ref
-            .get::<Name>()
-            .map(|n| n.as_str())
-            .unwrap_or("No Name"),
-        has_child: entity_ref.get::<Children>().map(|n| !n.is_empty()) == Some(true),
-    }
-}
-
-#[inline_props]
-fn EntityItemChildren(cx: Scope, entity: Entity, level: u8) -> Element {
-    let entity_infos = world_call(cx, {
-        to_owned![entity];
-        move |world| {
-            world
-                .entity(entity)
-                .get::<Children>()
-                .map(|c| c
-                    .into_iter()
-                    .copied()
-                    .map(|n| world.entity(n))
-                    .map(get_entity_info)
-                )
-        }
+fn setup(mut commands: Commands) {
+    commands.spawn(PointLightBundle {
+        point_light: PointLight {
+            intensity: 1500.0,
+            shadows_enabled: true,
+            ..default()
+        },
+        transform: Transform::from_xyz(4.0, 8.0, 4.0),
+        ..default()
     });
-    if entity_infos.is_none() {
-        return None;
-    }
-    let entity_infos = entity_infos.unwrap();
+    commands.spawn(Camera3dBundle {
+        transform: Transform::from_xyz(-2.0, 2.5, 5.0).looking_at(Vec3::ZERO, Vec3::Y),
+        ..default()
+    });
+}
 
+
+pub fn Root(cx: Scope) -> Element {
     render! {
-        view {
-            name: "child-item-children",
-            class: "flex-col items-stretch",
-            for entity in entity_infos {
-                EntityItem {
-                    data: entity,
-                    level: *level
-                }
-            }
-        }
+        WorldView{}
     }
 }
 
@@ -180,38 +117,100 @@ fn WorldView(cx: Scope) -> Element {
     }
 }
 
-pub fn Root(cx: Scope) -> Element {
+#[inline_props]
+fn EntityItemChildren(cx: Scope, entity: Entity, level: u8) -> Element {
+    let entity_infos = world_call(cx, {
+        to_owned![entity];
+        move |world| {
+            world
+                .entity(entity)
+                .get::<Children>()
+                .map(|c| c
+                    .into_iter()
+                    .copied()
+                    .map(|n| world.entity(n))
+                    .map(get_entity_info)
+                )
+        }
+    });
+    if entity_infos.is_none() {
+        return None;
+    }
+    let entity_infos = entity_infos.unwrap();
+
     render! {
-        WorldView{}
+        view {
+            name: "child-item-children",
+            class: "flex-col items-stretch",
+            for entity in entity_infos {
+                EntityItem {
+                    data: entity,
+                    level: *level
+                }
+            }
+        }
     }
 }
 
-fn main() {
-    let mut app = App::new();
-    app.add_plugins((
-        DefaultPlugins,
-        DioxusPlugin::new(Root)
-    ))
-        .add_systems(Startup, setup);
-
-    app.run();
+#[derive(PartialEq)]
+struct EntityInfo {
+    id: Entity,
+    name: &'static str,
+    has_child: bool,
 }
 
-fn setup(mut commands: Commands) {
-    commands.spawn(PointLightBundle {
-        point_light: PointLight {
-            intensity: 1500.0,
-            shadows_enabled: true,
-            ..default()
-        },
-        transform: Transform::from_xyz(4.0, 8.0, 4.0),
-        ..default()
-    });
-    // camera
-    commands.spawn(Camera3dBundle {
-        transform: Transform::from_xyz(-2.0, 2.5, 5.0).looking_at(Vec3::ZERO, Vec3::Y),
-        ..default()
-    });
+fn get_entity_info(entity_ref: EntityRef<'static>) -> EntityInfo {
+    EntityInfo {
+        id: entity_ref.id(),
+        name: entity_ref
+            .get::<Name>()
+            .map(|n| n.as_str())
+            .unwrap_or("No Name"),
+        has_child: entity_ref.get::<Children>().map(|n| !n.is_empty()) == Some(true),
+    }
+}
+
+#[inline_props]
+fn EntityItem(cx: Scope, data: EntityInfo, level: u8) -> Element {
+    let is_expand = use_state(cx, || false);
+
+    let handle_expand_click = |_| {
+        is_expand.set(!**is_expand);
+    };
+
+    render! {
+        view {
+            name: "entity-item",
+            class: "p-1 hover:bg-gray-100 items-center",
+            for _ in (0..*level) {
+                view {
+                    name: "entity-item-indicator",
+                    class: "w-5 h-5 items-center justify-center",
+                    "|"
+                }
+            }
+            view {
+                name: "entity-item-expand-btn",
+                class: "w-5 h-5 items-center justify-center bg-transparent hover:bg-gray-200",
+                visibility: if data.has_child { "visible" } else { "hidden" },
+                rotation: if **is_expand { 90 } else { 0 },
+                onclick: handle_expand_click,
+                ">"
+            }
+            view {
+                name: "entity-item-icon",
+                class: "w-5 h-5 items-center justify-center bg-transparent hover:bg-gray-200",
+                "E"
+            }
+            "{data.name} {data.id:?}"
+        }
+        if **is_expand {
+            rsx!(EntityItemChildren {
+                entity: data.id,
+                level: level+1
+            })
+        }
+    }
 }
 ```
 
