@@ -19,9 +19,11 @@ WIP：项目处于非常早期的阶段
 
 使用`world_call`方法传入回调函数，从`World`获取数据
 
-使用`use_cmd_sender` 获取 命令发送器，调用 `send_cmd` 方法，发送一个命令（即实现了`Command`）
+使用`use_cmd_sender` hook 获取 命令发送器，调用 `send_cmd` 方法 发送 命令（即实现了`Command` trait 的对象）
 
-`FnOnce(&mut World) + Send + 'static` 实现了 `Command`，所以示例中传入了一个闭包函数
+`FnOnce(&mut World) + Send + 'static` 实现了 `Command`，所以示例中传入了一个闭包函数，并使用`&mut World`对数据进行修改
+
+此实例需要你点击 refresh 按钮 进行手动刷新数据。
 
 ```rust
 #![allow(non_snake_case)]
@@ -221,9 +223,6 @@ fn EntityItem(cx: Scope, data: EntityInfo, level: u8) -> Element {
     }
 }
 ```
-
-
-
 
 ## 依赖库
 
