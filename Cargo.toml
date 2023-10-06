@@ -1,0 +1,28 @@
+[package]
+edition = "2021"
+name = "bevy_dioxus"
+version = "0.1.0"
+
+
+[dependencies]
+bevy = { version = "0.11" }
+serde = { version = "1", features = ["derive"] }
+
+dioxus = { version = "0.4", default-features = false, features = ["macro", "hooks"] }
+
+flume = "0.11"
+futures-core = { version = "0.3.5", default-features = false }
+futures-executor = "0.3.28"
+futures-util = { version = "0.3.28" }
+lazy_static = "1.4.0"
+oneshot = "0.1"
+smallvec = "1.11.0"
+
+bevy_mod_picking = { version = "0.15.0", default-features = false, features = ["backend_bevy_ui"] }
+
+[dev-dependencies]
+dioxus-hot-reload = { version = "0.4.0", features = ["file_watcher"] }
+
+[[example]]
+name = "entities_view"
+path = "examples/entities_view.rs"
