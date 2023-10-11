@@ -20,8 +20,9 @@ use ::core::alloc::{self, Layout};
 #[cfg(any(feature = "std", doctest))]*/
 #[cfg(feature = "coerce")]
 impl<T: ?Sized + Unsize<U>, U: ?Sized, Space> CoerceUnsized<SmallBox<U, Space>>
-for SmallBox<T, Space>
-{}
+    for SmallBox<T, Space>
+{
+}
 
 #[macro_export]
 macro_rules! smallbox {
@@ -45,8 +46,8 @@ pub struct SmallBox<T: ?Sized, Space> {
 impl<T: ?Sized, Space> SmallBox<T, Space> {
     #[inline(always)]
     pub fn new(val: T) -> SmallBox<T, Space>
-        where
-            T: Sized,
+    where
+        T: Sized,
     {
         smallbox!(val)
     }
@@ -54,8 +55,8 @@ impl<T: ?Sized, Space> SmallBox<T, Space> {
     #[doc(hidden)]
     #[inline]
     pub unsafe fn new_unchecked<U>(val: U, ptr: *const T) -> SmallBox<T, Space>
-        where
-            U: Sized,
+    where
+        U: Sized,
     {
         let result = Self::new_copy(&val, ptr);
         mem::forget(val);
@@ -89,8 +90,8 @@ impl<T: ?Sized, Space> SmallBox<T, Space> {
     }
 
     unsafe fn new_copy<U>(val: &U, ptr: *const T) -> SmallBox<T, Space>
-        where
-            U: ?Sized,
+    where
+        U: ?Sized,
     {
         let size = mem::size_of_val::<U>(val);
         let align = mem::align_of_val::<U>(val);
@@ -174,8 +175,8 @@ impl<T: ?Sized, Space> SmallBox<T, Space> {
     }
     #[inline]
     pub fn into_inner(self) -> T
-        where
-            T: Sized,
+    where
+        T: Sized,
     {
         let ret_val: T = unsafe { self.as_ptr().read() };
 
@@ -252,8 +253,8 @@ impl<T: ?Sized, Space> ops::Drop for SmallBox<T, Space> {
 }
 
 impl<T: Clone, Space> Clone for SmallBox<T, Space>
-    where
-        T: Sized,
+where
+    T: Sized,
 {
     fn clone(&self) -> Self {
         let val: &T = &*self;
@@ -538,4 +539,3 @@ mod tests {
         assert_eq!(val[1], 56);
     }
 }
-

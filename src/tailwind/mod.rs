@@ -1,19 +1,19 @@
-use std::ops::Deref;
 use bevy::prelude::{Component, Visibility};
 use bevy::reflect::Reflect;
 use bevy::ui::*;
 use bevy::utils::{default, HashMap};
 use smallvec::{smallvec, SmallVec};
+use std::ops::Deref;
 
-use crate::{get_schema_type, OptionalOverflow, PropValue, Texture, UiOptionalRect};
+use crate::smallbox::S1;
 use crate::{schema_props, SchemaPropUntyped, SchemaTypeUnTyped, SetAttrValueContext};
 use crate::{smallbox, SmallBox};
-use crate::smallbox::S1;
+use crate::{try_get_schema_type, OptionalOverflow, PropValue, Texture, UiOptionalRect};
 
 mod colors;
 
-pub use colors::*;
 use crate::prelude::warn;
+pub use colors::*;
 
 #[derive(Default)]
 pub struct TailwindClassItem(
@@ -25,7 +25,7 @@ impl Clone for TailwindClassItem {
     fn clone(&self) -> Self {
         let mut r = SmallVec::with_capacity(self.0.capacity());
         for (prop, value) in self.0.iter() {
-            r.push((*prop as _, value.deref().clone()));
+            r.push((*prop as _, value.deref().clone_prop_value()));
         }
         TailwindClassItem(r, Clone::clone(&self.1))
     }
@@ -34,13 +34,14 @@ impl Clone for TailwindClassItem {
 #[derive(Component, Reflect, Default, Debug, PartialEq)]
 pub struct InteractionClass;
 
-pub fn handle_classes(
-    context: &mut SetAttrValueContext,
-    classes: &str,
-) {
+pub fn handle_classes(context: &mut SetAttrValueContext, classes: &str) {
     let mut set_bits = 0;
 
-    let interaction = context.entity_ref.get::<Interaction>().copied().unwrap_or_default();
+    let interaction = context
+        .entity_ref
+        .get::<Interaction>()
+        .copied()
+        .unwrap_or_default();
     let mut interaction_classes = smallvec![];
     let mut items = classes
         .split_whitespace()
@@ -117,21 +118,22 @@ pub fn handle_classes(
     }
     let entity_extra_data = context.entity_extra_data();
     let schema_type: &dyn SchemaTypeUnTyped =
-        get_schema_type(entity_extra_data.schema_name).unwrap();
+        try_get_schema_type(entity_extra_data.schema_name).unwrap();
 
     entity_extra_data.interaction_classes = interaction_classes;
     entity_extra_data.normal_props_map = normal_props_map;
-    // 将 要设置的属性组 从 需要设置默认值的属性组 中排除
-    for prop_index in entity_extra_data
-        .iter_class_attr_indices_exclude(set_bits)
-    {
+    for prop_index in entity_extra_data.iter_class_attr_indices_exclude(set_bits) {
         let prop = schema_type.prop_by_index(prop_index);
         prop.set_to_default_value(context);
     }
 }
 
 pub fn handle_interaction_classes(context: &mut SetAttrValueContext) {
-    let interaction = context.entity_ref.get::<Interaction>().copied().unwrap_or_default();
+    let interaction = context
+        .entity_ref
+        .get::<Interaction>()
+        .copied()
+        .unwrap_or_default();
 
     let mut set_bits: u64 = 0;
     let mut unset_bits: u64 = 0;
@@ -148,8 +150,6 @@ pub fn handle_interaction_classes(context: &mut SetAttrValueContext) {
                 }
                 (Interaction::None, _) => {
                     warn!("This is not a interaction class!")
-                    // prop.set_dyn_value_in_class(entity_ref, value, context);
-                    // set_bits |= (1 << prop.index());
                 }
                 _ => {
                     unset_bits |= (1 << prop.index());
@@ -158,12 +158,17 @@ pub fn handle_interaction_classes(context: &mut SetAttrValueContext) {
         }
     }
     let schema_type: &dyn SchemaTypeUnTyped =
-        get_schema_type(context.entity_extra_data().schema_name).unwrap();
+        try_get_schema_type(context.entity_extra_data().schema_name).unwrap();
 
     let num = unset_bits & (!set_bits) & (!context.entity_extra_data().attr_is_set);
     for prop_index in (0..64).filter(move |i| (num >> i) & 1 == 1) {
         let prop = schema_type.prop_by_index(prop_index);
-        if let Some(value) = context.entity_extra_data().normal_props_map.get(&prop_index).cloned() {
+        if let Some(value) = context
+            .entity_extra_data()
+            .normal_props_map
+            .get(&prop_index)
+            .cloned()
+        {
             prop.set_dyn_value(context, value);
         } else {
             prop.set_to_default_value(context);
@@ -342,15 +347,9 @@ fn parse_class_inner<'a>(
                 }
             } else if let Some(class) = class.strip_prefix("text-") {
                 if let Some(color) = parse_color(class) {
-                    smallvec![(
-                        &schema_props::text_color as _,
-                        smallbox!(color)
-                    ),]
+                    smallvec![(&schema_props::text_color as _, smallbox!(color)),]
                 } else if let Ok(size) = class.parse::<f32>() {
-                    smallvec![(
-                        &schema_props::font_size as _,
-                        smallbox!(size)
-                    ),]
+                    smallvec![(&schema_props::font_size as _, smallbox!(size)),]
                 } else {
                     default()
                 }

@@ -14,7 +14,9 @@ pub struct SetAttrValueContext<'w> {
 
 impl<'w> SetAttrValueContext<'w> {
     pub fn entity_extra_data(&mut self) -> &mut EntityExtraData {
-        self.entities_extra_data.get_mut(&self.entity_ref.id()).unwrap()
+        self.entities_extra_data
+            .get_mut(&self.entity_ref.id())
+            .unwrap()
     }
 }
 
@@ -665,7 +667,6 @@ impl From<DomAttributeValue> for Option<Vec3> {
         }
     }
 }
-
 
 impl From<DomAttributeValue> for Option<BreakLineOn> {
     fn from(value: DomAttributeValue) -> Self {

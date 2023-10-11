@@ -1,23 +1,25 @@
 use std::mem;
 use std::ops::DerefMut;
-use std::sync::{Arc, Mutex};
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, Mutex};
 
 use bevy::ecs::system::{Command, CommandQueue, SystemBuffer, SystemMeta};
 use bevy::prelude::*;
 use bevy::ui::widget::TextFlags;
-use bevy_mod_picking::DefaultPickingPlugins;
+use bevy_cosmic_edit::{CosmicEditPlugin, CosmicText, Focus, ReadOnly};
 use bevy_mod_picking::prelude::PickingInteraction;
+use bevy_mod_picking::DefaultPickingPlugins;
 use dioxus::core::ElementId;
 use dioxus::prelude::*;
 
 use crate::apc::{self};
 use crate::ecs_apc::{EcsApcReceiver, EcsApcSender};
 use crate::entity_extra_data::EntitiesExtraData;
-use crate::{SetAttrValueContext, TextSections, Texture};
+use crate::prelude::{Click, ListenerInput, On, Pointer};
 use crate::tailwind::{handle_interaction_classes, InteractionClass};
-use crate::vdm_data::VDomData;
-use crate::vdom_main::{EcsMsg, vdom_main};
+use crate::vdm_data::{TemplateData, VDomData};
+use crate::vdom_main::{vdom_main, EcsMsg};
+use crate::{SetAttrValueContext, TextSections, Texture};
 
 #[derive(Component)]
 pub struct NodeTemplate;
@@ -80,6 +82,9 @@ pub struct EcsEventSender(pub flume::Sender<()>);
 #[derive(Deref, Clone, DerefMut)]
 pub struct EcsEventReceiver(pub flume::Receiver<()>);
 
+#[derive(Resource, Default, DerefMut, Deref)]
+pub struct TemplateWorld(World);
+
 impl Plugin for DioxusPlugin {
     fn build(&self, app: &mut App) {
         let ui = self.ui.lock().unwrap().take().unwrap();
@@ -113,12 +118,18 @@ impl Plugin for DioxusPlugin {
             });
             r
         };
-        app.add_plugins(DefaultPickingPlugins)
+        app.add_plugins((DefaultPickingPlugins, CosmicEditPlugin::default()))
             .register_type::<TextFlags>()
             .register_type::<PickingInteraction>()
             .register_type::<InteractionClass>()
             .register_type::<TextSections>()
             .register_type::<Texture>()
+            .insert_resource({
+                let mut world = World::default();
+                world.insert_resource(TemplateData::default());
+                world.insert_resource(EntitiesExtraData::default());
+                TemplateWorld(world)
+            })
             .insert_resource(EntitiesExtraData::default())
             .insert_resource(vdom_data)
             .insert_resource(DomApcSender(dom_apc_sender))
@@ -128,6 +139,7 @@ impl Plugin for DioxusPlugin {
             .add_systems(
                 Update,
                 (
+                    focus_input,
                     update_mutations.run_if(|receiver: Res<EcsReceiver>| !receiver.is_empty()),
                     update_interaction_classes,
                     handle_apc.run_if(|rpc_receiver: Res<EcsApcReceiver>| !rpc_receiver.is_empty()),
@@ -198,12 +210,10 @@ impl Command for HandleInteractionClassesCommand {
     fn apply(self, world: &mut World) {
         world.resource_scope(|world, mut entities_extra_data: Mut<EntitiesExtraData>| {
             for entity in self.0.into_iter() {
-                handle_interaction_classes(
-                    &mut SetAttrValueContext {
-                        entity_ref: &mut world.entity_mut(entity),
-                        entities_extra_data: entities_extra_data.deref_mut(),
-                    },
-                );
+                handle_interaction_classes(&mut SetAttrValueContext {
+                    entity_ref: &mut world.entity_mut(entity),
+                    entities_extra_data: entities_extra_data.deref_mut(),
+                });
             }
         });
     }
@@ -217,4 +227,19 @@ fn update_interaction_classes(
         return;
     }
     commands.add(HandleInteractionClassesCommand(entities.iter().collect()));
+}
+
+fn focus_input(
+    inputs: Query<Entity, (Without<ReadOnly>, Added<CosmicText>)>,
+    mut commands: Commands,
+) {
+    for entity in inputs.iter() {
+        commands
+            .entity(entity)
+            .insert(On::<Pointer<Click>>::run(on_click_input));
+    }
+}
+
+fn on_click_input(listener_input: Res<ListenerInput<Pointer<Click>>>, mut focus: ResMut<Focus>) {
+    focus.0 = Some(listener_input.target);
 }

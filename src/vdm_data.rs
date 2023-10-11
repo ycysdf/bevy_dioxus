@@ -1,3 +1,4 @@
+use crate::prelude::Name;
 use bevy::hierarchy::{Children, Parent};
 use bevy::prelude::{default, Entity, Resource, World};
 use bevy::utils::HashMap;
@@ -7,8 +8,12 @@ use smallvec::SmallVec;
 pub const MAX_CHILDREN: usize = 1024;
 
 #[derive(Resource, Default)]
-pub struct VDomData {
+pub struct TemplateData {
     pub template_name_to_entities: HashMap<String, Entity>,
+}
+
+#[derive(Resource, Default)]
+pub struct VDomData {
     pub loaded_node_stack: SmallVec<[Entity; MAX_CHILDREN]>,
     pub element_id_to_entity: HashMap<ElementId, Entity>,
 }
@@ -18,7 +23,6 @@ impl VDomData {
         Self {
             loaded_node_stack: default(),
             element_id_to_entity: default(),
-            template_name_to_entities: default(),
         }
     }
 

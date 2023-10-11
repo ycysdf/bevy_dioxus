@@ -19,10 +19,8 @@ oneshot = "0.1"
 smallvec = "1.11.0"
 
 bevy_mod_picking = { version = "0.15.0", default-features = false, features = ["backend_bevy_ui"] }
-
+bevy_cosmic_edit = { git = "http://github.com/ycysdf/bevy_cosmic_edit" }
+cosmic-text = { version = "0.9" }
 [dev-dependencies]
 dioxus-hot-reload = { version = "0.4.0", features = ["file_watcher"] }
-
-[[example]]
-name = "entities_view"
-path = "examples/entities_view.rs"
+bevy-inspector-egui = "0.19.0"

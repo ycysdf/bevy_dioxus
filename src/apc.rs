@@ -79,8 +79,8 @@ impl<S> DerefMut for ApcReceiver<S> {
 
 impl<S> ApcReceiver<S> {
     pub fn try_recv_all(&self, s: S) -> bool
-        where
-            S: Clone,
+    where
+        S: Clone,
     {
         let mut r = false;
         while let Ok(msg) = self.try_recv() {

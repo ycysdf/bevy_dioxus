@@ -1,19 +1,19 @@
 use std::any::Any;
-use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::Arc;
 
+use crate::apc::ApcReceiver;
 use bevy::ecs::system::CommandQueue;
-use bevy::prelude::{AppTypeRegistry, default};
+use bevy::log::error;
+use bevy::prelude::{default, AppTypeRegistry};
 use bevy::reflect::{ReflectFromPtr, ReflectFromReflect};
 use dioxus::core::{BorrowedAttributeValue, Mutation, Mutations};
 use dioxus::prelude::*;
-use futures_util::{FutureExt, select};
-use bevy::log::error;
-use crate::apc::ApcReceiver;
+use futures_util::{select, FutureExt};
 
-use crate::{DomApcReceiver, EcsSender};
 use crate::dom_commands::*;
 use crate::ecs_apc::EcsApcSender;
+use crate::{DomApcReceiver, EcsSender};
 
 pub enum EcsMsg {
     PushCommandQueue(CommandQueue),
@@ -125,7 +125,9 @@ pub fn vdom_main(
                             let value_type_id = value.type_id();
                             let value = {
                                 let type_registry = type_registry.read();
-                                let from_ptr = type_registry.get_type_data::<ReflectFromPtr>(value_type_id).unwrap();
+                                let from_ptr = type_registry
+                                    .get_type_data::<ReflectFromPtr>(value_type_id)
+                                    .unwrap();
 
                                 let ptr = value as *const dyn Any as *const ();
 
@@ -133,7 +135,9 @@ pub fn vdom_main(
 
                                 let reflect_obj = unsafe { from_ptr.as_reflect_ptr(Ptr::new(ptr)) };
 
-                                let from_reflect = type_registry.get_type_data::<ReflectFromReflect>(value_type_id).unwrap();
+                                let from_reflect = type_registry
+                                    .get_type_data::<ReflectFromReflect>(value_type_id)
+                                    .unwrap();
                                 from_reflect.from_reflect(reflect_obj).unwrap()
                             };
                             DomAttributeValue::Any(value)
@@ -188,7 +192,7 @@ pub fn vdom_main(
     handle_mutations(mutations);
 
     #[cfg(all(feature = "hot-reload", debug_assertions))]
-        let (hot_reload_tx, hot_reload_rx) = flume::unbounded::<dioxus_hot_reload::HotReloadMsg>();
+    let (hot_reload_tx, hot_reload_rx) = flume::unbounded::<dioxus_hot_reload::HotReloadMsg>();
 
     #[cfg(all(feature = "hot-reload", debug_assertions))]
     dioxus_hot_reload::connect({
@@ -202,9 +206,9 @@ pub fn vdom_main(
     futures_executor::block_on(async {
         loop {
             #[cfg(all(feature = "hot-reload", debug_assertions))]
-                let mut hot_reload_recv = hot_reload_rx.recv_async().fuse();
+            let mut hot_reload_recv = hot_reload_rx.recv_async().fuse();
             #[cfg(not(all(feature = "hot-reload", debug_assertions)))]
-                let mut hot_reload_recv = std::future::pending::<()>().fuse();
+            let mut hot_reload_recv = std::future::pending::<()>().fuse();
 
             select! {
                 _ = vdom.wait_for_work().fuse() => {

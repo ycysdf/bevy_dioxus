@@ -1,9 +1,12 @@
 use std::{ops::Deref, rc::Rc};
 
+use crate::apc::{self};
 use bevy::prelude::{Res, World};
 use bevy_mod_picking::prelude::{EntityEvent, ListenerInput, On, Pointer};
-use dioxus::{core::{ElementId, prelude::EventHandler}, prelude::Event};
-use crate::apc::{self};
+use dioxus::{
+    core::{prelude::EventHandler, ElementId},
+    prelude::Event,
+};
 
 use crate::vdm_data::VDomData;
 
@@ -24,8 +27,8 @@ impl EventReturn<()> for () {}
 pub struct AsyncMarker;
 
 impl<T> EventReturn<AsyncMarker> for T
-    where
-        T: std::future::Future<Output=()> + 'static,
+where
+    T: std::future::Future<Output = ()> + 'static,
 {
     #[inline]
     fn spawn(self, cx: &dioxus::core::ScopeState) {
@@ -108,8 +111,8 @@ macro_rules! impl_events {
     };
 }
 pub mod events {
-    use bevy_mod_picking::prelude::Pointer;
     use bevy_mod_picking::prelude::events::*;
+    use bevy_mod_picking::prelude::Pointer;
     impl_events![
         onmouseover: Pointer<Over>,
         onmouseout: Pointer<Out>,

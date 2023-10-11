@@ -1,10 +1,10 @@
 #![allow(non_upper_case_globals)]
 #![allow(non_camel_case_types)]
 
+use crate::prelude::World;
+use crate::{impl_schema_type_base, SchemaType};
 use bevy::ecs::world::EntityMut;
 use bevy::prelude::NodeBundle;
-use crate::{impl_schema_type_base, SchemaType};
-use crate::prelude::World;
 
 impl_schema_type_base!(view);
 

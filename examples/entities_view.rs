@@ -1,13 +1,12 @@
 #![allow(non_snake_case)]
 
+use bevy_dioxus::ecs_apc::EcsApcSender;
 use bevy_dioxus::prelude::*;
 
 fn main() {
     let mut app = App::new();
-    app.add_plugins((
-        DefaultPlugins,
-        DioxusPlugin::new(Root)
-    )).add_systems(Startup, setup);
+    app.add_plugins((DefaultPlugins, DioxusPlugin::new(Root)))
+        .add_systems(Startup, setup);
 
     app.run();
 }
@@ -28,10 +27,13 @@ fn setup(mut commands: Commands) {
     });
 }
 
-
 pub fn Root(cx: Scope) -> Element {
+    // let entity_infos = world_call(cx, |world| {
+    // });
     render! {
-        WorldView{}
+        WorldView{
+
+        }
     }
 }
 
@@ -56,7 +58,6 @@ fn WorldView(cx: Scope) -> Element {
             });
         });
     };
-
 
     let entity_infos = world_call(cx, |world| {
         world
@@ -104,15 +105,12 @@ fn EntityItemChildren(cx: Scope, entity: Entity, level: u8) -> Element {
     let entity_infos = world_call(cx, {
         to_owned![entity];
         move |world| {
-            world
-                .entity(entity)
-                .get::<Children>()
-                .map(|c| c
-                    .into_iter()
+            world.entity(entity).get::<Children>().map(|c| {
+                c.into_iter()
                     .copied()
                     .map(|n| world.entity(n))
                     .map(get_entity_info)
-                )
+            })
         }
     });
     if entity_infos.is_none() {

@@ -42,7 +42,8 @@ impl From<&'_ TemplateNode<'_>> for DomTemplateNode {
                 children,
             } => DomTemplateNode::Element {
                 tag: unsafe { std::mem::transmute::<&str, &'static str>(tag) },
-                namespace: namespace.map(|n| unsafe { std::mem::transmute::<&str, &'static str>(n) }),
+                namespace: namespace
+                    .map(|n| unsafe { std::mem::transmute::<&str, &'static str>(n) }),
                 attrs: attrs
                     .into_iter()
                     .map(|n| match n {
@@ -52,7 +53,8 @@ impl From<&'_ TemplateNode<'_>> for DomTemplateNode {
                             namespace,
                         } => DomTemplateAttribute::Static {
                             name: unsafe { std::mem::transmute::<&str, &'static str>(name) },
-                            namespace: namespace.map(|n| unsafe { std::mem::transmute::<&str, &'static str>(n) }),
+                            namespace: namespace
+                                .map(|n| unsafe { std::mem::transmute::<&str, &'static str>(n) }),
                             value: value.to_string(),
                         },
                         TemplateAttribute::Dynamic { id } => {

@@ -1,22 +1,26 @@
-use std::ops::DerefMut;
 use bevy::core::Name;
 use bevy::ecs::system::Command;
 use bevy::hierarchy::BuildWorldChildren;
 use bevy::prelude::{
-    Color, Component, default, DespawnRecursiveExt, Entity, error, Mut, NodeBundle, Reflect,
+    default, error, Color, Component, DespawnRecursiveExt, Entity, Mut, NodeBundle, Reflect,
     SpatialBundle, Text, TextBundle, TextSection, TextStyle, Visibility, World,
 };
 use dioxus::core::ElementId;
+use std::ops::DerefMut;
 
-use crate::{ecs_fns, get_schema_type, NodeTemplate, schemas, SchemaTypeBase, SetAttrValueContext};
-use crate::vdm_data::VDomData;
 use crate::dom_template::{DomTemplate, DomTemplateAttribute, DomTemplateNode};
 use crate::ecs_fns::{insert_after, insert_before, WorldExtension};
 use crate::entity_extra_data::{EntitiesExtraData, EntityExtraData};
+use crate::prelude::{warn, Resource};
 use crate::schema_events::events::{listen_dom_event_by_name, unlisten_dom_event_by_name};
+use crate::vdm_data::{TemplateData, VDomData};
+use crate::{
+    ecs_fns, empty_node, get_schema_type, schemas, try_get_schema_type, NodeTemplate,
+    SchemaTypeBase, SetAttrValueContext, TemplateWorld,
+};
 
 pub fn create_template_node(
-    world: &mut World,
+    template_world: &mut World,
     entities_extra_data: &mut EntitiesExtraData,
     template_node: DomTemplateNode,
 ) -> Entity {
@@ -31,28 +35,31 @@ pub fn create_template_node(
                 let mut entities = vec![];
                 entities.reserve(children.len());
                 for n in children.into_iter() {
-                    entities.push(create_template_node(world, entities_extra_data, n));
+                    entities.push(create_template_node(template_world, entities_extra_data, n));
                 }
                 entities
             };
 
-            let static_attrs = attrs.into_iter().filter_map(|attr| {
-                if let DomTemplateAttribute::Static { name, value, .. } = attr {
-                    Some((name, value))
-                } else {
-                    None
-                }
-            }).collect::<Vec<_>>();
-            let Some(schema_type) = get_schema_type(tag) else {
-                panic!("No Found SchemaType by tag: {:#?}", tag);
-            };
-            let mut entity_ref = schema_type.spawn(world);
-            let entity =entity_ref.id();
+            let static_attrs = attrs
+                .into_iter()
+                .filter_map(|attr| {
+                    if let DomTemplateAttribute::Static { name, value, .. } = attr {
+                        Some((name, value))
+                    } else {
+                        None
+                    }
+                })
+                .collect::<Vec<_>>();
+            let schema_type = get_schema_type(tag);
+            let mut entity_ref = schema_type.spawn(template_world);
+            let entity = entity_ref.id();
             let mut entity_extra_data = EntityExtraData::new(tag);
             for (name, _) in static_attrs.iter() {
-                if let Some(attr) = schema_type.prop(&name) {
-                    entity_extra_data.set_attr(attr.index(), true);
-                }
+                let Some(attr) = schema_type.prop(&name) else {
+                    warn!("no found attr {:?}", name);
+                    continue;
+                };
+                entity_extra_data.set_attr(attr.index(), true);
             }
             entity_ref.push_children(entities.as_slice());
             entities_extra_data.insert(entity, entity_extra_data);
@@ -61,12 +68,11 @@ pub fn create_template_node(
                 entities_extra_data,
             };
             for (name, value) in static_attrs.into_iter() {
-                if let Some(attr) = schema_type.prop(&name) {
-                    attr.set_by_attr_value(
-                        &mut context,
-                        DomAttributeValue::Text(value),
-                    );
-                }
+                let Some(attr) = schema_type.prop(&name) else {
+                    warn!("no found attr {:?}", name);
+                    continue;
+                };
+                attr.set_by_attr_value(&mut context, DomAttributeValue::Text(value));
             }
 
             entity
@@ -74,7 +80,7 @@ pub fn create_template_node(
         DomTemplateNode::Text {
             text: text_value, ..
         } => {
-            let entity_ref = world.spawn(
+            let entity_ref = template_world.spawn(
                 (TextBundle {
                     text: Text::from_section(
                         text_value,
@@ -89,13 +95,17 @@ pub fn create_template_node(
             entities_extra_data.insert(entity_ref.id(), EntityExtraData::new(schemas::text::NAME));
             entity_ref.id()
         }
-        DomTemplateNode::Dynamic { .. } => {
-            // todo：DomTemplateNode::Dynamic
-            let entity = world.spawn(NodeBundle::default());
+        DomTemplateNode::Dynamic { id } => {
+            // todo: schema tag?
+            let entity = template_world.spawn((
+                NodeBundle::default(),
+                Name::new(format!("Dynamic, ElementId {:?}", id)),
+            ));
+            entities_extra_data.empty_node_entities.push(entity.id());
             entity.id()
         }
         DomTemplateNode::DynamicText { .. } => {
-            let entity_ref = world.spawn(TextBundle {
+            let entity_ref = template_world.spawn(TextBundle {
                 text: Text::from_section(
                     "",
                     TextStyle {
@@ -118,39 +128,41 @@ pub struct CreateTemplates {
 
 impl Command for CreateTemplates {
     fn apply(self, world: &mut World) {
-        world.resource_scope(|world, mut vdom_data: Mut<VDomData>| {
-            world.resource_scope(|world, mut entities_extra_data: Mut<EntitiesExtraData>| {
-                for template in self.templates.into_iter() {
-                    let mut entities = vec![];
-                    for n in template.roots.into_iter() {
-                        entities.push(create_template_node(
-                            world,
-                            entities_extra_data.as_mut(),
-                            n,
-                        ));
-                    }
+        let mut template_world = world.resource_mut::<TemplateWorld>();
+        template_world.resource_scope(
+            |template_world, mut entities_extra_data: Mut<EntitiesExtraData>| {
+                template_world.resource_scope(
+                    |template_world, mut template_data: Mut<TemplateData>| {
+                        for template in self.templates.into_iter() {
+                            let mut entities = vec![];
+                            for n in template.roots.into_iter() {
+                                entities.push(create_template_node(
+                                    template_world,
+                                    entities_extra_data.as_mut(),
+                                    n,
+                                ));
+                            }
 
-                    let mut template_entity_ref = world.spawn((
-                        SpatialBundle {
-                            visibility: Visibility::Hidden,
-                            ..default()
-                        },
-                        Name::new(format!("template {}", template.name.clone())),
-                        NodeTemplate,
-                    ));
-                    let template_entity = template_entity_ref.id();
-                    template_entity_ref.push_children(entities.as_slice());
-                    vdom_data
-                        .template_name_to_entities
-                        .insert(template.name, template_entity);
-                }
-            });
-        });
+                            let mut template_entity_ref = template_world.spawn((
+                                SpatialBundle {
+                                    visibility: Visibility::Hidden,
+                                    ..default()
+                                },
+                                Name::new(format!("template {}", template.name.clone())),
+                                NodeTemplate,
+                            ));
+                            let template_entity = template_entity_ref.id();
+                            template_entity_ref.push_children(entities.as_slice());
+                            template_data
+                                .template_name_to_entities
+                                .insert(template.name, template_entity);
+                        }
+                    },
+                )
+            },
+        );
     }
 }
-
-#[derive(Component)]
-pub struct LoadedTemplate;
 
 #[derive(Clone, Debug, Default)]
 pub struct LoadTemplate {
@@ -161,18 +173,23 @@ pub struct LoadTemplate {
 
 impl Command for LoadTemplate {
     fn apply(self, world: &mut World) {
-        world.resource_scope(|world, mut vdom_data: Mut<VDomData>| {
-            let template_entity = vdom_data.template_name_to_entities[&self.name];
-            let root_entity = world.get_child_by_index(template_entity, self.root_index);
-            let loaded_entity =
-                world.resource_scope(|world, mut entities_extra_data: Mut<EntitiesExtraData>| {
-                    ecs_fns::clone_entity_nest(world, entities_extra_data.as_mut(), root_entity)
+        world.resource_scope(|world, mut template_world: Mut<TemplateWorld>| {
+            template_world.resource_scope(|template_world, mut template_data: Mut<TemplateData>| {
+                let template_entity = template_data.template_name_to_entities[&self.name];
+                let root_entity = template_world.get_child_by_index(template_entity, self.root_index);
+                let loaded_entity =
+                    template_world.resource_scope(|template_world, mut template_entities_extra_data: Mut<EntitiesExtraData>| {
+                        world.resource_scope(|world, mut entities_extra_data: Mut<EntitiesExtraData>| {
+                            ecs_fns::clone_entity_nest(world, entities_extra_data.as_mut(), template_world, template_entities_extra_data.as_mut(), root_entity)
+                        })
+                    });
+                world.resource_scope(|world, mut vdom_data: Mut<VDomData>| {
+                    vdom_data.loaded_node_stack.push(loaded_entity);
+                    vdom_data
+                        .element_id_to_entity
+                        .insert(self.element_id, loaded_entity);
                 });
-            world.entity_mut(loaded_entity).insert(LoadedTemplate);
-            vdom_data.loaded_node_stack.push(loaded_entity);
-            vdom_data
-                .element_id_to_entity
-                .insert(self.element_id, loaded_entity);
+            });
         });
     }
 }
@@ -251,14 +268,24 @@ impl Command for HydrateText {
         world.resource_scope(|world, mut vdom_data: Mut<VDomData>| {
             let (entity, _) = vdom_data.load_path(self.path, world, false);
             vdom_data.element_id_to_entity.insert(self.id, entity);
-            let mut text = world.get_mut::<Text>(entity).unwrap();
-            text.sections = vec![TextSection::new(
-                self.value,
-                text.sections
-                    .first()
-                    .map(|n| n.style.clone())
-                    .unwrap_or_default(),
-            )];
+            let mut entity_mut = world.entity_mut(entity);
+            if let Some(mut text) = entity_mut.get_mut::<Text>() {
+                text.sections = vec![TextSection::new(
+                    self.value,
+                    text.sections
+                        .first()
+                        .map(|n| n.style.clone())
+                        .unwrap_or_default(),
+                )];
+            } else {
+                entity_mut.insert(Text::from_section(
+                    self.value,
+                    TextStyle {
+                        color: Color::BLACK,
+                        ..default()
+                    },
+                ));
+            }
         });
     }
 }
@@ -401,7 +428,7 @@ impl Command for CreateTextNode {
                     },
                 ),
                 ..default()
-            }, ));
+            },));
             let text_entity = text_entity_ref.id();
             vdom_data.element_id_to_entity.insert(self.id, text_entity);
             vdom_data.loaded_node_stack.push(text_entity);
@@ -460,13 +487,7 @@ impl Command for SetAttribute {
                 error!("No Found EntityExtraData by {:#?}", entity);
                 return;
             };
-            let Some(schema_type) = get_schema_type(entity_extra_data.schema_name) else {
-                error!(
-                    "No Found SchemaType by {:#?}",
-                    entity_extra_data.schema_name
-                );
-                return;
-            };
+            let schema_type = get_schema_type(entity_extra_data.schema_name);
             let Some(attr) = schema_type.prop(self.name) else {
                 error!("No Found Attr by {:#?}", self.name);
                 return;

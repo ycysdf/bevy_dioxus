@@ -4,40 +4,43 @@ use std::ops::Deref;
 use bevy::prelude::Reflect;
 
 pub use schema_attribute_values::*;
-pub use text_schema::*;
-pub use view_schema::*;
+pub use schema_input::*;
+pub use schema_text::*;
+pub use schema_view::*;
 
-use crate::{smallbox, SmallBox};
 use crate::dom_commands::DomAttributeValue;
 use crate::schema_core::SchemaTypeUnTyped;
 use crate::smallbox::S1;
-
-// pub use svg_schema::*;
-// mod svg_schema;
+use crate::{smallbox, SmallBox};
 
 mod schema_attribute_values;
 pub mod schema_events;
+mod schema_input;
 pub mod schema_props;
-mod text_schema;
-mod view_schema;
+mod schema_text;
+mod schema_view;
 
-pub fn get_schema_type(name: &str) -> Option<&'static dyn SchemaTypeUnTyped> {
+pub fn try_get_schema_type(name: &str) -> Option<&'static dyn SchemaTypeUnTyped> {
     match name {
         stringify!(view) => Some(&view),
         stringify!(text) => Some(&text),
+        stringify!(input) => Some(&input),
         // stringify!(svg) => Some(&svg),
         _ => None,
     }
 }
 
-pub trait PropValue: Any + Send + Sync {
-    fn clone(&self) -> SmallBox<dyn PropValue, S1>;
-    fn as_any(&self) -> &dyn Any;
+pub fn get_schema_type(name: &str) -> &'static dyn SchemaTypeUnTyped {
+    try_get_schema_type(name).expect(&format!("No Found SchemaType by {:#?}", name))
+}
+
+pub trait PropValue: Reflect {
+    fn clone_prop_value(&self) -> SmallBox<dyn PropValue, S1>;
 }
 
 impl Clone for SmallBox<dyn PropValue, S1> {
     fn clone(&self) -> Self {
-        self.deref().clone()
+        self.deref().clone_prop_value()
     }
 
     fn clone_from(&mut self, source: &Self) {
@@ -46,18 +49,13 @@ impl Clone for SmallBox<dyn PropValue, S1> {
 }
 
 impl<T: Clone + Reflect + Send + Sync + 'static> PropValue for T
-    where
-        Option<T>: From<DomAttributeValue>,
+where
+    Option<T>: From<DomAttributeValue>,
 {
-    fn clone(&self) -> SmallBox<dyn PropValue, S1> {
+    fn clone_prop_value(&self) -> SmallBox<dyn PropValue, S1> {
         smallbox!(self.clone())
     }
-
-    fn as_any(&self) -> &dyn Any {
-        self
-    }
 }
-
 
 #[macro_export]
 macro_rules! common_props_define {

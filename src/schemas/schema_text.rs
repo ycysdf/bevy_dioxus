@@ -1,20 +1,44 @@
 #![allow(non_upper_case_globals)]
 #![allow(non_camel_case_types)]
 
+use bevy::a11y::accesskit::Role::ContentInfo;
+use bevy::ecs::component::ComponentInfo;
 use bevy::ecs::world::EntityMut;
-use bevy::prelude::TextBundle;
+use bevy::prelude::{AppTypeRegistry, TextBundle};
 use bevy::text::{Text, TextLayoutInfo};
 use bevy::ui::widget::TextFlags;
+use std::any::{Any, TypeId};
 
-use crate::{impl_schema_type_base, SchemaType, SetAttrValueContext, TextSections};
-use crate::prelude::World;
+use crate::prelude::{Entity, Reflect, World};
 use crate::schema_props::COMMON_PROPS_COUNT;
+use crate::{
+    default_clone_component, impl_schema_type_base, SchemaType, SetAttrValueContext, TextSections,
+};
 
-impl_schema_type_base!(text,sections);
+impl_schema_type_base!(text, sections);
 
 impl SchemaType for text {
     fn spawn<'w>(&self, world: &'w mut World) -> EntityMut<'w> {
         world.spawn(TextBundle::default())
+    }
+
+    fn try_insert_no_reflect_components(
+        &self,
+        _entity_mut: &mut EntityMut,
+        template_world: &World,
+        template_entity: Entity,
+        _type_registry: AppTypeRegistry,
+        _component_info: &ComponentInfo,
+    ) -> bool {
+        let type_id = ComponentInfo::type_id(_component_info).unwrap();
+
+        match type_id {
+            n if n == TypeId::of::<TextLayoutInfo>() => {
+                _entity_mut.insert(TextLayoutInfo::default());
+            }
+            _ => return false,
+        }
+        true
     }
 }
 
@@ -29,11 +53,17 @@ impl SchemaProp for sections {
     fn set_value(&self, context: &mut SetAttrValueContext, value: impl Into<Self::Value>) {
         if let Some(mut t) = context.entity_ref.get_mut::<Text>() {
             t.sections = value.into().0;
+            if !context.entity_ref.contains::<TextFlags>() {
+                context.entity_ref.insert(TextFlags::default());
+            }
+            if !context.entity_ref.contains::<TextLayoutInfo>() {
+                context.entity_ref.insert(TextLayoutInfo::default());
+            }
         } else {
             context.entity_ref.insert((
                 Text::from_sections(value.into().0),
                 TextFlags::default(),
-                TextLayoutInfo::default()
+                TextLayoutInfo::default(),
             ));
         }
     }
@@ -73,5 +103,3 @@ impl SchemaProp for linebreak_behavior {
     const INDEX: u8 = COMMON_PROPS_COUNT + 2;
 }
  */
-
-

@@ -5,13 +5,13 @@ use bevy::prelude::*;
 use bevy::ui;
 use bevy::ui::widget::UiImageSize;
 
-use crate::{PropValue, schemas, SchemaTypeBase, SmallBox};
-use crate::{OptionalOverflow, SetAttrValueContext, Texture, UiOptionalRect};
 use crate::dom_commands::DomAttributeValue;
 use crate::ecs_fns::StyleEntityExt;
 use crate::schema_core::SchemaProp;
 use crate::smallbox::S1;
 use crate::tailwind::handle_classes;
+use crate::{schemas, PropValue, SchemaTypeBase, SmallBox};
+use crate::{OptionalOverflow, SetAttrValueContext, Texture, UiOptionalRect};
 
 pub const COMMON_PROPS_COUNT: u8 = 42;
 
@@ -33,11 +33,7 @@ impl SchemaProp for class {
 
     const INDEX: u8 = 0;
 
-    fn set_by_attr_value(
-        &self,
-        context: &mut SetAttrValueContext,
-        value: DomAttributeValue,
-    ) {
+    fn set_by_attr_value(&self, context: &mut SetAttrValueContext, value: DomAttributeValue) {
         match value {
             DomAttributeValue::Text(value) => {
                 handle_classes(context, &value);
@@ -130,7 +126,9 @@ impl SchemaProp for background {
                     },
                     UiImageSize::default(),
                 ));
-                context.entity_ref.remove::<(Handle<TextureAtlas>, UiTextureAtlasImage)>();
+                context
+                    .entity_ref
+                    .remove::<(Handle<TextureAtlas>, UiTextureAtlasImage)>();
             }
             Texture::Atlas {
                 flip_y,
@@ -791,7 +789,20 @@ impl SchemaProp for text_color {
             }
         };
         if context.entity_extra_data().schema_name != schemas::text::NAME {
-            let children = context.entity_ref.get_mut::<Children>().map(|c| c.into_iter().filter(|e| context.entities_extra_data.get(*e).is_some_and(|n| n.schema_name == schemas::text::NAME)).copied().collect::<Vec<_>>())
+            let children = context
+                .entity_ref
+                .get_mut::<Children>()
+                .map(|c| {
+                    c.into_iter()
+                        .filter(|e| {
+                            context
+                                .entities_extra_data
+                                .get(*e)
+                                .is_some_and(|n| n.schema_name == schemas::text::NAME)
+                        })
+                        .copied()
+                        .collect::<Vec<_>>()
+                })
                 .unwrap_or_default();
             for entity in children {
                 context.entity_ref.world_scope(|world| {
@@ -821,7 +832,20 @@ impl SchemaProp for font_size {
             }
         };
         if context.entity_extra_data().schema_name != schemas::text::NAME {
-            let children = context.entity_ref.get_mut::<Children>().map(|c| c.into_iter().filter(|e| context.entities_extra_data.get(*e).is_some_and(|n| n.schema_name == schemas::text::NAME)).copied().collect::<Vec<_>>())
+            let children = context
+                .entity_ref
+                .get_mut::<Children>()
+                .map(|c| {
+                    c.into_iter()
+                        .filter(|e| {
+                            context
+                                .entities_extra_data
+                                .get(*e)
+                                .is_some_and(|n| n.schema_name == schemas::text::NAME)
+                        })
+                        .copied()
+                        .collect::<Vec<_>>()
+                })
                 .unwrap_or_default();
             for entity in children {
                 context.entity_ref.world_scope(|world| {

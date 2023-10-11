@@ -1,6 +1,11 @@
+use crate::prelude::{warn, AppTypeRegistry, Entity};
+use crate::schema_core::SchemaPropUntyped;
+use crate::ReflectExtension;
+use bevy::ecs::component::{ComponentId, ComponentInfo};
 use bevy::ecs::world::EntityMut;
 use bevy::prelude::World;
-use crate::schema_core::SchemaPropUntyped;
+use bevy::reflect::ReflectFromPtr;
+use std::any::Any;
 
 pub trait SchemaTypeUnTyped {
     fn schema_name(&self) -> &'static str;
@@ -13,26 +18,57 @@ pub trait SchemaTypeUnTyped {
         self.props()[index as usize]
     }
     fn spawn<'w>(&self, world: &'w mut World) -> EntityMut<'w>;
+    fn try_insert_no_reflect_components(
+        &self,
+        entity_mut: &mut EntityMut,
+        template_world: &World,
+        template_entity: Entity,
+        type_registry: AppTypeRegistry,
+        component_info: &ComponentInfo,
+    ) -> bool;
 }
 
 impl<T: SchemaTypeBase + SchemaType> SchemaTypeUnTyped for T {
+    #[inline]
     fn schema_name(&self) -> &'static str {
         T::TAG_NAME
     }
 
+    #[inline]
     fn namespace(&self) -> Option<&'static str> {
         T::NAME_SPACE
     }
 
+    #[inline]
     fn props(&self) -> &'static [&'static dyn SchemaPropUntyped] {
         T::PROPS
     }
 
+    #[inline]
     fn prop(&self, attr_name: &str) -> Option<&'static dyn SchemaPropUntyped> {
         T::prop(attr_name)
     }
+    #[inline]
     fn spawn<'w>(&self, world: &'w mut World) -> EntityMut<'w> {
         self.spawn(world)
+    }
+
+    #[inline]
+    fn try_insert_no_reflect_components(
+        &self,
+        entity_mut: &mut EntityMut,
+        template_world: &World,
+        template_entity: Entity,
+        type_registry: AppTypeRegistry,
+        component_info: &ComponentInfo,
+    ) -> bool {
+        self.try_insert_no_reflect_components(
+            entity_mut,
+            template_world,
+            template_entity,
+            type_registry,
+            component_info,
+        )
     }
 }
 
@@ -47,7 +83,48 @@ pub trait SchemaTypeBase {
     }
 }
 
+pub fn default_clone_component(
+    world: &World,
+    type_registry: AppTypeRegistry,
+    entity: Entity,
+    component_info: &ComponentInfo,
+) -> Option<Box<dyn Any>> {
+    let component_type_id = component_info.type_id()?;
+
+    let component_id = component_info.id();
+
+    let type_id = world
+        .components()
+        .get_info(component_id)
+        .and_then(|n| n.type_id())?;
+    let component_ptr = world.get_by_id(entity, component_id)?;
+
+    let type_registry = type_registry.read();
+    let from_ptr = type_registry.get_type_data::<ReflectFromPtr>(type_id);
+    if from_ptr.is_none() {
+        warn!(
+            "component {:?} no found ReflectFromPtr type data!",
+            component_info.name()
+        );
+    }
+    let from_ptr = from_ptr?;
+    let reflect_obj = unsafe { from_ptr.as_reflect_ptr(component_ptr) };
+
+    let reflect_obj = reflect_obj.clone_real_value(&type_registry, component_type_id)?;
+    Some(reflect_obj.into_any())
+}
 
 pub trait SchemaType {
     fn spawn<'w>(&self, world: &'w mut World) -> EntityMut<'w>;
+    #[inline]
+    fn try_insert_no_reflect_components(
+        &self,
+        _entity_mut: &mut EntityMut,
+        template_world: &World,
+        template_entity: Entity,
+        _type_registry: AppTypeRegistry,
+        _component_info: &ComponentInfo,
+    ) -> bool {
+        false
+    }
 }
