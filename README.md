@@ -25,19 +25,18 @@ WIP：项目处于非常早期的阶段
 
 `FnOnce(&mut World) + Send + 'static` 实现了 `Command`，所以示例中传入了一个闭包函数，并使用`&mut World`对数据进行修改
 
-因为当前 bevy 无法监听任意实体的 创建与删除，所以此实例需要你手动点击 refresh 按钮来手动刷新
+此实例你需要手动点击 refresh 按钮来手动刷新实体
 
 ```rust
 #![allow(non_snake_case)]
 
+use bevy_dioxus::ecs_apc::EcsApcSender;
 use bevy_dioxus::prelude::*;
 
 fn main() {
     let mut app = App::new();
-    app.add_plugins((
-        DefaultPlugins,
-        DioxusPlugin::new(Root)
-    )).add_systems(Startup, setup);
+    app.add_plugins((DefaultPlugins, DioxusPlugin::new(Root)))
+        .add_systems(Startup, setup);
 
     app.run();
 }
@@ -58,10 +57,10 @@ fn setup(mut commands: Commands) {
     });
 }
 
-
 pub fn Root(cx: Scope) -> Element {
     render! {
-        WorldView{}
+        WorldView{
+        }
     }
 }
 
@@ -86,7 +85,6 @@ fn WorldView(cx: Scope) -> Element {
             });
         });
     };
-
 
     let entity_infos = world_call(cx, |world| {
         world
@@ -134,15 +132,12 @@ fn EntityItemChildren(cx: Scope, entity: Entity, level: u8) -> Element {
     let entity_infos = world_call(cx, {
         to_owned![entity];
         move |world| {
-            world
-                .entity(entity)
-                .get::<Children>()
-                .map(|c| c
-                    .into_iter()
+            world.entity(entity).get::<Children>().map(|c| {
+                c.into_iter()
                     .copied()
                     .map(|n| world.entity(n))
                     .map(get_entity_info)
-                )
+            })
         }
     });
     if entity_infos.is_none() {
@@ -185,11 +180,9 @@ fn get_entity_info(entity_ref: EntityRef<'static>) -> EntityInfo {
 #[inline_props]
 fn EntityItem(cx: Scope, data: EntityInfo, level: u8) -> Element {
     let is_expand = use_state(cx, || false);
-
     let handle_expand_click = |_| {
         is_expand.set(!**is_expand);
     };
-
     render! {
         view {
             name: "entity-item",
