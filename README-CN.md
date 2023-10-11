@@ -1,30 +1,31 @@
 # bevy_dioxus
 
-<div>
-    <h4>
-        <a href="https://github.com/ycysdf/bevy_dioxus/blob/main/README-CN.md">中文</a>
-    </h4>
-</div>
+[Bevy](https://github.com/bevyengine/bevy) 集成 [Dioxus](https://github.com/DioxusLabs/dioxus)
 
-[Bevy](https://github.com/bevyengine/bevy) integration [Dioxus](https://github.com/DioxusLabs/dioxus)
+这是个实验项目
 
-WIP：It's an experimental project. The project is at a very early stage
+WIP：项目处于非常早期的阶段
 
-## Feature
+## 特点
 
-- Render via bevy
-- tailwind partial support
+- 使用 bevy 进行渲染
+- 支持 tailwind（不完整）
 
-## Simple examples. Tutorials
+## 简单示例、教程
 
-Using this plugin is as simple as adding the `DioxusPlugin` plugin and passing in the `Dioxus` component.
+使用此插件很简单，只需要添加`DioxusPlugin`插件并传入`Dioxus`组件即可。
 
-Use the `world_call` method to pass the callback function and get the data from `World`
+下面是一个树状实体列表的示例，
 
-Get the `Command` sender using the `use_cmd_sender` hook and call the `send_cmd` method to send the `Command`
+如下方代码示例所示：
 
-> For this example. you need to manually click the "refresh" button to manually refresh the entity list
+使用`world_call`方法传入回调函数，从`World`获取数据
 
+使用`use_cmd_sender` hook 获取 命令发送器，调用 `send_cmd` 方法 发送 命令（即实现了`Command` trait 的对象）
+
+`FnOnce(&mut World) + Send + 'static` 实现了 `Command`，所以示例中传入了一个闭包函数，并使用`&mut World`对数据进行修改
+
+此实例你需要手动点击 refresh 按钮来手动刷新实体
 ```rust
 #![allow(non_snake_case)]
 
@@ -217,20 +218,21 @@ fn EntityItem(cx: Scope, data: EntityInfo, level: u8) -> Element {
 }
 ```
 
-## Install
 
-This library is not currently published to crate
+## 安装
 
-So you need to use the library this way
+目前此库没有发布到 crate
+
+所以你需要这样使用此库
 
 ```toml
 bevy_dioxus = { git = "https://github.com/ycysdf/bevy_dioxus" }
 ```
 
-## Dependency Library
+## 依赖库
 
-- provide event support: [bevy_mod_picking](https://github.com/aevyrie/bevy_mod_picking/)
+- 提供事件支持：https://github.com/aevyrie/bevy_mod_picking/
 
-## Reference Item
+## 参考项目
 
-- [tpaint](https://github.com/dylanblokhuis/tpaint)
+- https://github.com/dylanblokhuis/tpaint
