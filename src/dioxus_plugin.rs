@@ -1,25 +1,25 @@
 use std::mem;
 use std::ops::DerefMut;
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use bevy::ecs::system::{Command, CommandQueue, SystemBuffer, SystemMeta};
 use bevy::prelude::*;
 use bevy::ui::widget::TextFlags;
 use bevy_cosmic_edit::{CosmicEditPlugin, CosmicText, Focus, ReadOnly};
-use bevy_mod_picking::prelude::PickingInteraction;
 use bevy_mod_picking::DefaultPickingPlugins;
+use bevy_mod_picking::prelude::PickingInteraction;
 use dioxus::core::ElementId;
 use dioxus::prelude::*;
 
+use crate::{SetAttrValueContext, TextSections, Texture};
 use crate::apc::{self};
 use crate::ecs_apc::{EcsApcReceiver, EcsApcSender};
 use crate::entity_extra_data::EntitiesExtraData;
 use crate::prelude::{Click, ListenerInput, On, Pointer};
 use crate::tailwind::{handle_interaction_classes, InteractionClass};
 use crate::vdm_data::{TemplateData, VDomData};
-use crate::vdom_main::{vdom_main, EcsMsg};
-use crate::{SetAttrValueContext, TextSections, Texture};
+use crate::vdom_main::{EcsMsg, vdom_main};
 
 #[derive(Component)]
 pub struct NodeTemplate;

@@ -1,7 +1,8 @@
 #![allow(non_snake_case)]
 
-use bevy_dioxus::prelude::*;
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
+
+use bevy_dioxus::prelude::*;
 
 fn main() {
     let mut app = App::new();
@@ -10,7 +11,7 @@ fn main() {
         DioxusPlugin::new(Root),
         WorldInspectorPlugin::new(),
     ))
-    .add_systems(Startup, setup);
+        .add_systems(Startup, setup);
 
     app.run();
 }

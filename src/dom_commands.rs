@@ -1,23 +1,24 @@
+use std::ops::DerefMut;
+
 use bevy::core::Name;
 use bevy::ecs::system::Command;
 use bevy::hierarchy::BuildWorldChildren;
 use bevy::prelude::{
-    default, error, Color, Component, DespawnRecursiveExt, Entity, Mut, NodeBundle, Reflect,
+    Color, default, DespawnRecursiveExt, Entity, error, Mut, NodeBundle, Reflect,
     SpatialBundle, Text, TextBundle, TextSection, TextStyle, Visibility, World,
 };
 use dioxus::core::ElementId;
-use std::ops::DerefMut;
 
+use crate::{
+    ecs_fns, get_schema_type, NodeTemplate, schemas,
+    SchemaTypeBase, SetAttrValueContext, TemplateWorld,
+};
 use crate::dom_template::{DomTemplate, DomTemplateAttribute, DomTemplateNode};
 use crate::ecs_fns::{insert_after, insert_before, WorldExtension};
 use crate::entity_extra_data::{EntitiesExtraData, EntityExtraData};
-use crate::prelude::{warn, Resource};
+use crate::prelude::warn;
 use crate::schema_events::events::{listen_dom_event_by_name, unlisten_dom_event_by_name};
 use crate::vdm_data::{TemplateData, VDomData};
-use crate::{
-    ecs_fns, empty_node, get_schema_type, schemas, try_get_schema_type, NodeTemplate,
-    SchemaTypeBase, SetAttrValueContext, TemplateWorld,
-};
 
 pub fn create_template_node(
     template_world: &mut World,
@@ -174,7 +175,7 @@ pub struct LoadTemplate {
 impl Command for LoadTemplate {
     fn apply(self, world: &mut World) {
         world.resource_scope(|world, mut template_world: Mut<TemplateWorld>| {
-            template_world.resource_scope(|template_world, mut template_data: Mut<TemplateData>| {
+            template_world.resource_scope(|template_world, template_data: Mut<TemplateData>| {
                 let template_entity = template_data.template_name_to_entities[&self.name];
                 let root_entity = template_world.get_child_by_index(template_entity, self.root_index);
                 let loaded_entity =
@@ -183,7 +184,7 @@ impl Command for LoadTemplate {
                             ecs_fns::clone_entity_nest(world, entities_extra_data.as_mut(), template_world, template_entities_extra_data.as_mut(), root_entity)
                         })
                     });
-                world.resource_scope(|world, mut vdom_data: Mut<VDomData>| {
+                world.resource_scope(|_world, mut vdom_data: Mut<VDomData>| {
                     vdom_data.loaded_node_stack.push(loaded_entity);
                     vdom_data
                         .element_id_to_entity
@@ -428,7 +429,7 @@ impl Command for CreateTextNode {
                     },
                 ),
                 ..default()
-            },));
+            }, ));
             let text_entity = text_entity_ref.id();
             vdom_data.element_id_to_entity.insert(self.id, text_entity);
             vdom_data.loaded_node_stack.push(text_entity);

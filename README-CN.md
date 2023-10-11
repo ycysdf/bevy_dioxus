@@ -26,6 +26,7 @@ WIP：项目处于非常早期的阶段
 `FnOnce(&mut World) + Send + 'static` 实现了 `Command`，所以示例中传入了一个闭包函数，并使用`&mut World`对数据进行修改
 
 此实例你需要手动点击 refresh 按钮来手动刷新实体
+
 ```rust
 #![allow(non_snake_case)]
 
@@ -217,7 +218,6 @@ fn EntityItem(cx: Scope, data: EntityInfo, level: u8) -> Element {
     }
 }
 ```
-
 
 ## 安装
 

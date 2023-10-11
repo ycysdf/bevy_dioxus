@@ -1,10 +1,13 @@
 use bevy::ecs::world::EntityMut;
 use bevy::prelude::*;
+use bevy::reflect::TypePath;
 use bevy::text::BreakLineOn;
 use serde::{Deserialize, Serialize};
 
+use crate::{PropValue, SmallBox, smallbox};
 use crate::dom_commands::DomAttributeValue;
 use crate::entity_extra_data::{EntitiesExtraData, EntityExtraData};
+use crate::smallbox::S1;
 use crate::tailwind::{parse_color, parse_size_val};
 
 pub struct SetAttrValueContext<'w> {
@@ -144,12 +147,6 @@ pub enum Texture {
         flip_y: bool,
         color: Color,
     },
-}
-
-impl Default for Texture {
-    fn default() -> Self {
-        Self::Color(default())
-    }
 }
 
 impl From<DomAttributeValue> for Option<Color> {
@@ -719,3 +716,291 @@ impl From<DomAttributeValue> for Option<TextAlignment> {
         }
     }
 } */
+
+
+impl PropValue for Color {
+    fn clone_prop_value(&self) -> SmallBox<dyn PropValue, S1> {
+        smallbox!(self.clone())
+    }
+
+    fn default_value() -> Self {
+        Color::rgba_u8(0, 0, 0, 0)
+    }
+}
+
+impl PropValue for f64 {
+    fn clone_prop_value(&self) -> SmallBox<dyn PropValue, S1> {
+        smallbox!(self.clone())
+    }
+    fn default_value() -> Self {
+        <Self as Default>::default()
+    }
+}
+
+impl PropValue for bool {
+    fn clone_prop_value(&self) -> SmallBox<dyn PropValue, S1> {
+        smallbox!(self.clone())
+    }
+    fn default_value() -> Self {
+        <Self as Default>::default()
+    }
+}
+
+impl PropValue for i64 {
+    fn clone_prop_value(&self) -> SmallBox<dyn PropValue, S1> {
+        smallbox!(self.clone())
+    }
+    fn default_value() -> Self {
+        <Self as Default>::default()
+    }
+}
+
+impl PropValue for Texture {
+    fn clone_prop_value(&self) -> SmallBox<dyn PropValue, S1> {
+        smallbox!(self.clone())
+    }
+    fn default_value() -> Self {
+        Texture::Color(Color::rgba_u8(0, 0, 0, 0))
+    }
+}
+
+impl PropValue for f32 {
+    fn clone_prop_value(&self) -> SmallBox<dyn PropValue, S1> {
+        smallbox!(self.clone())
+    }
+    fn default_value() -> Self {
+        <Self as Default>::default()
+    }
+}
+
+impl PropValue for Val {
+    fn clone_prop_value(&self) -> SmallBox<dyn PropValue, S1> {
+        smallbox!(self.clone())
+    }
+    fn default_value() -> Self {
+        <Self as Default>::default()
+    }
+}
+
+impl PropValue for BorderColor {
+    fn clone_prop_value(&self) -> SmallBox<dyn PropValue, S1> {
+        smallbox!(self.clone())
+    }
+    fn default_value() -> Self {
+        BorderColor(Color::rgba_u8(0, 0, 0, 0))
+    }
+}
+
+impl PropValue for UiOptionalRect {
+    fn clone_prop_value(&self) -> SmallBox<dyn PropValue, S1> {
+        smallbox!(self.clone())
+    }
+    fn default_value() -> Self {
+        <Self as Default>::default()
+    }
+}
+
+impl PropValue for Display {
+    fn clone_prop_value(&self) -> SmallBox<dyn PropValue, S1> {
+        smallbox!(self.clone())
+    }
+    fn default_value() -> Self {
+        <Self as Default>::default()
+    }
+}
+
+impl PropValue for PositionType {
+    fn clone_prop_value(&self) -> SmallBox<dyn PropValue, S1> {
+        smallbox!(self.clone())
+    }
+    fn default_value() -> Self {
+        <Self as Default>::default()
+    }
+}
+
+impl PropValue for OptionalOverflow {
+    fn clone_prop_value(&self) -> SmallBox<dyn PropValue, S1> {
+        smallbox!(self.clone())
+    }
+    fn default_value() -> Self {
+        <Self as Default>::default()
+    }
+}
+
+impl PropValue for Direction {
+    fn clone_prop_value(&self) -> SmallBox<dyn PropValue, S1> {
+        smallbox!(self.clone())
+    }
+    fn default_value() -> Self {
+        <Self as Default>::default()
+    }
+}
+
+impl PropValue for AlignItems {
+    fn clone_prop_value(&self) -> SmallBox<dyn PropValue, S1> {
+        smallbox!(self.clone())
+    }
+    fn default_value() -> Self {
+        <Self as Default>::default()
+    }
+}
+
+impl PropValue for JustifyItems {
+    fn clone_prop_value(&self) -> SmallBox<dyn PropValue, S1> {
+        smallbox!(self.clone())
+    }
+    fn default_value() -> Self {
+        <Self as Default>::default()
+    }
+}
+
+impl PropValue for AlignSelf {
+    fn clone_prop_value(&self) -> SmallBox<dyn PropValue, S1> {
+        smallbox!(self.clone())
+    }
+    fn default_value() -> Self {
+        <Self as Default>::default()
+    }
+}
+
+impl PropValue for JustifySelf {
+    fn clone_prop_value(&self) -> SmallBox<dyn PropValue, S1> {
+        smallbox!(self.clone())
+    }
+    fn default_value() -> Self {
+        <Self as Default>::default()
+    }
+}
+
+impl PropValue for AlignContent {
+    fn clone_prop_value(&self) -> SmallBox<dyn PropValue, S1> {
+        smallbox!(self.clone())
+    }
+    fn default_value() -> Self {
+        <Self as Default>::default()
+    }
+}
+
+impl PropValue for JustifyContent {
+    fn clone_prop_value(&self) -> SmallBox<dyn PropValue, S1> {
+        smallbox!(self.clone())
+    }
+    fn default_value() -> Self {
+        <Self as Default>::default()
+    }
+}
+
+impl PropValue for FlexDirection {
+    fn clone_prop_value(&self) -> SmallBox<dyn PropValue, S1> {
+        smallbox!(self.clone())
+    }
+    fn default_value() -> Self {
+        <Self as Default>::default()
+    }
+}
+
+impl PropValue for FlexWrap {
+    fn clone_prop_value(&self) -> SmallBox<dyn PropValue, S1> {
+        smallbox!(self.clone())
+    }
+    fn default_value() -> Self {
+        <Self as Default>::default()
+    }
+}
+
+impl PropValue for Visibility {
+    fn clone_prop_value(&self) -> SmallBox<dyn PropValue, S1> {
+        smallbox!(self.clone())
+    }
+    fn default_value() -> Self {
+        <Self as Default>::default()
+    }
+}
+
+impl PropValue for TextSections {
+    fn clone_prop_value(&self) -> SmallBox<dyn PropValue, S1> {
+        smallbox!(self.clone())
+    }
+    fn default_value() -> Self {
+        <Self as Default>::default()
+    }
+}
+
+impl PropValue for ZIndex {
+    fn clone_prop_value(&self) -> SmallBox<dyn PropValue, S1> {
+        smallbox!(self.clone())
+    }
+    fn default_value() -> Self {
+        <Self as Default>::default()
+    }
+}
+
+impl PropValue for Transform {
+    fn clone_prop_value(&self) -> SmallBox<dyn PropValue, S1> {
+        smallbox!(self.clone())
+    }
+    fn default_value() -> Self {
+        <Self as Default>::default()
+    }
+}
+
+impl PropValue for Quat {
+    fn clone_prop_value(&self) -> SmallBox<dyn PropValue, S1> {
+        smallbox!(self.clone())
+    }
+    fn default_value() -> Self {
+        <Self as Default>::default()
+    }
+}
+
+impl PropValue for Vec3 {
+    fn clone_prop_value(&self) -> SmallBox<dyn PropValue, S1> {
+        smallbox!(self.clone())
+    }
+    fn default_value() -> Self {
+        <Self as Default>::default()
+    }
+}
+
+impl PropValue for BreakLineOn {
+    fn clone_prop_value(&self) -> SmallBox<dyn PropValue, S1> {
+        smallbox!(self.clone())
+    }
+    fn default_value() -> Self {
+        BreakLineOn::WordBoundary
+    }
+}
+
+impl PropValue for TextAlignment {
+    fn clone_prop_value(&self) -> SmallBox<dyn PropValue, S1> {
+        smallbox!(self.clone())
+    }
+    fn default_value() -> Self {
+        TextAlignment::Left
+    }
+}
+
+impl PropValue for String {
+    fn clone_prop_value(&self) -> SmallBox<dyn PropValue, S1> {
+        smallbox!(self.clone())
+    }
+
+    fn default_value() -> Self where Self: Sized {
+        <Self as Default>::default()
+    }
+}
+
+impl<T: PropValue + TypePath + FromReflect + Clone> PropValue for Option<T> {
+    fn clone_prop_value(&self) -> SmallBox<dyn PropValue, S1> {
+        smallbox!(match self {
+            None => None,
+            Some(n) => {
+                Some(T::clone(n))
+            }
+        })
+    }
+
+    fn default_value() -> Self where Self: Sized {
+        <Self as Default>::default()
+    }
+}

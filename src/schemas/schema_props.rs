@@ -2,16 +2,17 @@
 
 use bevy::ecs::world::EntityMut;
 use bevy::prelude::*;
+use bevy::text::BreakLineOn;
 use bevy::ui;
 use bevy::ui::widget::UiImageSize;
 
+use crate::{PropValue, schemas, SchemaTypeBase, SmallBox};
+use crate::{OptionalOverflow, SetAttrValueContext, Texture, UiOptionalRect};
 use crate::dom_commands::DomAttributeValue;
 use crate::ecs_fns::StyleEntityExt;
 use crate::schema_core::SchemaProp;
 use crate::smallbox::S1;
 use crate::tailwind::handle_classes;
-use crate::{schemas, PropValue, SchemaTypeBase, SmallBox};
-use crate::{OptionalOverflow, SetAttrValueContext, Texture, UiOptionalRect};
 
 pub const COMMON_PROPS_COUNT: u8 = 42;
 
@@ -741,35 +742,37 @@ impl SchemaProp for scale {
     }
 }
 
-/*pub struct text_align;
-
-impl SchemaProp for text_align {
-    type Value = TextAlignment;
-
-    const TAG_NAME: &'static str = stringify!(text_align);
-
-    const INDEX: u8 = 39;
-    fn set_value(&self, context: &mut SetAttrValueContext, value: impl Into<Self::Value>) {
-        let entity_set_value = |entity_ref: &mut EntityMut| {
-            if let Some(text) = entity_ref.get_mut::<Text>() {
-                text.alignment = value.into();
-            }
-        };
-        if context.entity_extra_data().schema_name != schemas::text::NAME {
-            if let Some(children) = context.entity_ref.get_mut::<Children>() {
-                for entity in children.into_iter().filter(|e| context.entities_extra_data.get(e).is_some_and(|n| n.schema_name == schemas::text::NAME)).copied() {
-                    context.entity_ref.world_scope(|world| {
-                        if let Some(mut entity_ref) = world.get_mut(entity) {
-                            entity_set_value(entity_ref.deref_mut());
-                        }
-                    })
-                }
-            }
-        } else {
-            entity_set_value(context.entity_ref);
+fn set_text_value(context: &mut SetAttrValueContext, mut f: impl FnMut(Mut<Text>)) {
+    let mut entity_set_value = |entity_ref: &mut EntityMut| {
+        if let Some(text) = entity_ref.get_mut::<Text>() {
+            f(text)
         }
+    };
+    if context.entity_extra_data().schema_name != schemas::text::NAME {
+        let children = context
+            .entity_ref
+            .get_mut::<Children>()
+            .map(|c| {
+                c.into_iter()
+                    .filter(|e| {
+                        context
+                            .entities_extra_data
+                            .get(*e)
+                            .is_some_and(|n| n.schema_name == schemas::text::NAME)
+                    })
+                    .copied()
+                    .collect::<Vec<_>>()
+            })
+            .unwrap_or_default();
+        for entity in children {
+            context.entity_ref.world_scope(|world| {
+                entity_set_value(&mut world.entity_mut(entity));
+            })
+        }
+    } else {
+        entity_set_value(context.entity_ref);
     }
-}*/
+}
 
 pub struct text_color;
 
@@ -780,40 +783,15 @@ impl SchemaProp for text_color {
 
     const INDEX: u8 = 39;
     fn set_value(&self, context: &mut SetAttrValueContext, value: impl Into<Self::Value>) {
-        let color = value.into();
-        let entity_set_value = |entity_ref: &mut EntityMut| {
-            if let Some(mut text) = entity_ref.get_mut::<Text>() {
-                for section in text.sections.iter_mut() {
-                    section.style.color = color;
-                }
+        let value = value.into();
+        set_text_value(context, move |mut text| {
+            for section in text.sections.iter_mut() {
+                section.style.color = value;
             }
-        };
-        if context.entity_extra_data().schema_name != schemas::text::NAME {
-            let children = context
-                .entity_ref
-                .get_mut::<Children>()
-                .map(|c| {
-                    c.into_iter()
-                        .filter(|e| {
-                            context
-                                .entities_extra_data
-                                .get(*e)
-                                .is_some_and(|n| n.schema_name == schemas::text::NAME)
-                        })
-                        .copied()
-                        .collect::<Vec<_>>()
-                })
-                .unwrap_or_default();
-            for entity in children {
-                context.entity_ref.world_scope(|world| {
-                    entity_set_value(&mut world.entity_mut(entity));
-                })
-            }
-        } else {
-            entity_set_value(context.entity_ref);
-        }
+        });
     }
 }
+
 pub struct font_size;
 
 impl SchemaProp for font_size {
@@ -824,36 +802,43 @@ impl SchemaProp for font_size {
     const INDEX: u8 = 39;
     fn set_value(&self, context: &mut SetAttrValueContext, value: impl Into<Self::Value>) {
         let value = value.into();
-        let entity_set_value = |entity_ref: &mut EntityMut| {
-            if let Some(mut text) = entity_ref.get_mut::<Text>() {
-                for section in text.sections.iter_mut() {
-                    section.style.font_size = value;
-                }
+        set_text_value(context, move |mut text| {
+            for section in text.sections.iter_mut() {
+                section.style.font_size = value;
             }
-        };
-        if context.entity_extra_data().schema_name != schemas::text::NAME {
-            let children = context
-                .entity_ref
-                .get_mut::<Children>()
-                .map(|c| {
-                    c.into_iter()
-                        .filter(|e| {
-                            context
-                                .entities_extra_data
-                                .get(*e)
-                                .is_some_and(|n| n.schema_name == schemas::text::NAME)
-                        })
-                        .copied()
-                        .collect::<Vec<_>>()
-                })
-                .unwrap_or_default();
-            for entity in children {
-                context.entity_ref.world_scope(|world| {
-                    entity_set_value(&mut world.entity_mut(entity));
-                })
-            }
-        } else {
-            entity_set_value(context.entity_ref);
-        }
+        });
+    }
+}
+
+pub struct text_linebreak_behavior;
+
+impl SchemaProp for text_linebreak_behavior {
+    type Value = BreakLineOn;
+
+    const TAG_NAME: &'static str = stringify!(text_color);
+
+    const INDEX: u8 = 39;
+    fn set_value(&self, context: &mut SetAttrValueContext, value: impl Into<Self::Value>) {
+        let value = value.into();
+        set_text_value(context, move |mut text| {
+            text.linebreak_behavior = value;
+        });
+    }
+}
+
+
+pub struct text_align;
+
+impl SchemaProp for text_align {
+    type Value = TextAlignment;
+
+    const TAG_NAME: &'static str = stringify!(text_align);
+
+    const INDEX: u8 = 39;
+    fn set_value(&self, context: &mut SetAttrValueContext, value: impl Into<Self::Value>) {
+        let value = value.into();
+        set_text_value(context, move |mut text| {
+            text.alignment = value;
+        });
     }
 }

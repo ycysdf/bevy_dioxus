@@ -1,19 +1,19 @@
 #![allow(non_upper_case_globals)]
 #![allow(non_camel_case_types)]
 
-use bevy::a11y::accesskit::Role::ContentInfo;
+use std::any::{TypeId};
+
 use bevy::ecs::component::ComponentInfo;
 use bevy::ecs::world::EntityMut;
 use bevy::prelude::{AppTypeRegistry, TextBundle};
-use bevy::text::{Text, TextLayoutInfo};
+use bevy::text::{BreakLineOn, Text, TextLayoutInfo};
 use bevy::ui::widget::TextFlags;
-use std::any::{Any, TypeId};
 
-use crate::prelude::{Entity, Reflect, World};
-use crate::schema_props::COMMON_PROPS_COUNT;
 use crate::{
-    default_clone_component, impl_schema_type_base, SchemaType, SetAttrValueContext, TextSections,
+    impl_schema_type_base, SchemaType, SetAttrValueContext, TextSections,
 };
+use crate::prelude::{Entity, TextAlignment, warn, World};
+use crate::schema_props::COMMON_PROPS_COUNT;
 
 impl_schema_type_base!(text, sections);
 
@@ -25,8 +25,8 @@ impl SchemaType for text {
     fn try_insert_no_reflect_components(
         &self,
         _entity_mut: &mut EntityMut,
-        template_world: &World,
-        template_entity: Entity,
+        _template_world: &World,
+        _template_entity: Entity,
         _type_registry: AppTypeRegistry,
         _component_info: &ComponentInfo,
     ) -> bool {
@@ -69,8 +69,7 @@ impl SchemaProp for sections {
     }
 }
 
-// TextAlignment,BreakLineOn does not implement Default!
-/* pub struct alignment;
+pub struct alignment;
 
 impl SchemaProp for alignment {
     type Value = TextAlignment;
@@ -78,28 +77,29 @@ impl SchemaProp for alignment {
     const TAG_NAME: &'static str = "alignment";
     const INDEX: u8 = COMMON_PROPS_COUNT + 1;
 
-    fn set_value(&self, entity_ref: &mut EntityMut, value: impl Into<Self::Value>) {
-        if let Some(mut t) = entity_ref.get_mut::<Text>() {
+    fn set_value(&self, context: &mut SetAttrValueContext, value: impl Into<Self::Value>) {
+        if let Some(mut t) = context.entity_ref.get_mut::<Text>() {
             t.alignment = value.into();
         } else {
             warn!("no found Text component!");
         }
     }
-} */
-/* pub struct linebreak_behavior;
+}
+
+pub struct linebreak_behavior;
 
 impl SchemaProp for linebreak_behavior {
     type Value = BreakLineOn;
 
-    fn set_value(&self, entity_ref: &mut EntityMut, value: impl Into<Self::Value>) {
-        if let Some(mut t) = entity_ref.get_mut::<Text>() {
-            t.linebreak_behavior = value.into().0;
+    const TAG_NAME: &'static str = "linebreak";
+
+    const INDEX: u8 = COMMON_PROPS_COUNT + 2;
+    fn set_value(&self, context: &mut SetAttrValueContext, value: impl Into<Self::Value>) {
+        if let Some(mut t) = context.entity_ref.get_mut::<Text>() {
+            t.linebreak_behavior = value.into();
         } else {
             warn!("no found Text component!");
         }
     }
-
-    const TAG_NAME: &'static str = "linebreak";
-    const INDEX: u8 = COMMON_PROPS_COUNT + 2;
 }
- */
+

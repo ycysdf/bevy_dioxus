@@ -1,3 +1,4 @@
+pub use checkbox::*;
+
 mod checkbox;
 
-pub use checkbox::*;

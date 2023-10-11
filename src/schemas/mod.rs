@@ -1,17 +1,9 @@
-use std::any::Any;
-use std::ops::Deref;
-
-use bevy::prelude::Reflect;
-
 pub use schema_attribute_values::*;
 pub use schema_input::*;
 pub use schema_text::*;
 pub use schema_view::*;
 
-use crate::dom_commands::DomAttributeValue;
 use crate::schema_core::SchemaTypeUnTyped;
-use crate::smallbox::S1;
-use crate::{smallbox, SmallBox};
 
 mod schema_attribute_values;
 pub mod schema_events;
@@ -34,28 +26,6 @@ pub fn get_schema_type(name: &str) -> &'static dyn SchemaTypeUnTyped {
     try_get_schema_type(name).expect(&format!("No Found SchemaType by {:#?}", name))
 }
 
-pub trait PropValue: Reflect {
-    fn clone_prop_value(&self) -> SmallBox<dyn PropValue, S1>;
-}
-
-impl Clone for SmallBox<dyn PropValue, S1> {
-    fn clone(&self) -> Self {
-        self.deref().clone_prop_value()
-    }
-
-    fn clone_from(&mut self, source: &Self) {
-        *self = source.clone()
-    }
-}
-
-impl<T: Clone + Reflect + Send + Sync + 'static> PropValue for T
-where
-    Option<T>: From<DomAttributeValue>,
-{
-    fn clone_prop_value(&self) -> SmallBox<dyn PropValue, S1> {
-        smallbox!(self.clone())
-    }
-}
 
 #[macro_export]
 macro_rules! common_props_define {

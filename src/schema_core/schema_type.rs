@@ -1,11 +1,13 @@
-use crate::prelude::{warn, AppTypeRegistry, Entity};
-use crate::schema_core::SchemaPropUntyped;
-use crate::ReflectExtension;
-use bevy::ecs::component::{ComponentId, ComponentInfo};
+use std::any::Any;
+
+use bevy::ecs::component::ComponentInfo;
 use bevy::ecs::world::EntityMut;
 use bevy::prelude::World;
 use bevy::reflect::ReflectFromPtr;
-use std::any::Any;
+
+use crate::prelude::{AppTypeRegistry, Entity, warn};
+use crate::ReflectExtension;
+use crate::schema_core::SchemaPropUntyped;
 
 pub trait SchemaTypeUnTyped {
     fn schema_name(&self) -> &'static str;
@@ -120,8 +122,8 @@ pub trait SchemaType {
     fn try_insert_no_reflect_components(
         &self,
         _entity_mut: &mut EntityMut,
-        template_world: &World,
-        template_entity: Entity,
+        _template_world: &World,
+        _template_entity: Entity,
         _type_registry: AppTypeRegistry,
         _component_info: &ComponentInfo,
     ) -> bool {

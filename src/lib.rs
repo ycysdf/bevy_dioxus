@@ -31,18 +31,21 @@ pub mod prelude {
     pub use bevy_mod_picking::prelude::*;
     pub use dioxus::core::Event;
     pub use dioxus::prelude::*;
+    pub use bevy_mod_picking::prelude::events;
 
+    pub use dioxus_elements::*;
+    pub use dioxus_elements::input;
+
+    pub use crate::{SchemaProp, SchemaPropUntyped, SchemaTypeBase, SchemaTypeUnTyped};
     pub use crate::dioxus_ext::{use_cmd_sender, UseStateExt};
+    pub use crate::DioxusPlugin;
     pub use crate::ecs_apc::world_call;
     pub use crate::schemas::schema_events::PointerEventHandler;
-    pub use crate::DioxusPlugin;
-    pub use crate::{SchemaProp, SchemaPropUntyped, SchemaTypeBase, SchemaTypeUnTyped};
-    pub use dioxus_elements::*;
 
     #[allow(non_camel_case_types)]
     #[allow(non_upper_case_globals)]
     pub mod dioxus_elements {
-        pub use crate::schemas::schema_events::*;
         pub use crate::{input, text, view};
+        pub use crate::schemas::schema_events::*;
     }
 }

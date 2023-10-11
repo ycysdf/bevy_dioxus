@@ -1,25 +1,22 @@
-use bevy::ecs::component::{ComponentDescriptor, ComponentId, ComponentInfo, StorageType};
-use std::alloc::Layout;
 use std::any::{Any, TypeId};
-use std::borrow::Cow;
 use std::mem::ManuallyDrop;
 use std::ops::DerefMut;
 use std::ptr::NonNull;
 
+use bevy::ecs::component::ComponentInfo;
 use bevy::ecs::world::EntityMut;
 use bevy::hierarchy::{BuildWorldChildren, Children, Parent};
 use bevy::prelude::{
-    warn, AppTypeRegistry, Component, Entity, Reflect, ReflectFromReflect, Style, Text, World,
+    AppTypeRegistry, Component, Entity, Reflect, ReflectFromReflect, Style, warn, World,
 };
 use bevy::ptr::OwningPtr;
 use bevy::reflect::{ReflectFromPtr, TypeRegistryInternal as TypeRegistry};
-use bevy::text::TextLayoutInfo;
 
 use crate::entity_extra_data::EntitiesExtraData;
+use crate::get_schema_type;
 use crate::prelude::{
-    default, error, Bundle, Display, Name, Node, NodeBundle, ReflectComponent, Transform,
+    default, Display, error, Name, NodeBundle, ReflectComponent,
 };
-use crate::{get_schema_type, try_get_schema_type};
 
 pub fn dyn_to_owning_ptr(dyn_reflect: Box<dyn Any>) -> OwningPtr<'static> {
     let mut dyn_reflect = ManuallyDrop::new(dyn_reflect);

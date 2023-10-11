@@ -1,11 +1,12 @@
-use bevy::prelude::{Deref, DerefMut, Entity, Resource};
-use bevy::utils::{default, HashMap};
-use smallvec::SmallVec;
 use std::ops::{Deref, DerefMut};
 
+use bevy::prelude::{Entity, Resource};
+use bevy::utils::{default, HashMap};
+use smallvec::SmallVec;
+
+use crate::{PropValue, SmallBox};
 use crate::smallbox::S1;
 use crate::tailwind::TailwindClassItem;
-use crate::{PropValue, SmallBox};
 
 #[derive(Clone)]
 pub struct EntityExtraData {
@@ -60,13 +61,13 @@ impl EntityExtraData {
         self.class_attr_is_set & (!(1 << attr_index)) != self.class_attr_is_set
     }
 
-    pub fn iter_set_class_attr_indices(&self) -> impl Iterator<Item = u8> + 'static {
+    pub fn iter_set_class_attr_indices(&self) -> impl Iterator<Item=u8> + 'static {
         let num = self.class_attr_is_set;
         (0..64)
             .filter(move |i| (num >> i) & 1 == 1)
             .take(self.class_attr_set_count as usize)
     }
-    pub fn iter_class_attr_indices_exclude(&self, bits: u64) -> impl Iterator<Item = u8> + 'static {
+    pub fn iter_class_attr_indices_exclude(&self, bits: u64) -> impl Iterator<Item=u8> + 'static {
         let num = self.class_attr_is_set & !bits;
         (0..64).filter(move |i| (num >> i) & 1 == 1)
     }

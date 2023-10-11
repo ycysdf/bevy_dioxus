@@ -29,8 +29,8 @@ pub fn insert_default_colors(colors: &mut Colors) {
             ("900".into(), [15, 23, 42, 255]),
             ("950".into(), [2, 6, 23, 255]),
         ]
-        .into_iter()
-        .collect(),
+            .into_iter()
+            .collect(),
     );
     colors.insert(
         "gray".into(),
@@ -47,8 +47,8 @@ pub fn insert_default_colors(colors: &mut Colors) {
             ("900".into(), [17, 24, 39, 255]),
             ("950".into(), [3, 7, 18, 255]),
         ]
-        .into_iter()
-        .collect(),
+            .into_iter()
+            .collect(),
     );
     colors.insert(
         "zinc".into(),
@@ -65,8 +65,8 @@ pub fn insert_default_colors(colors: &mut Colors) {
             ("900".into(), [24, 24, 27, 255]),
             ("950".into(), [9, 9, 11, 255]),
         ]
-        .into_iter()
-        .collect(),
+            .into_iter()
+            .collect(),
     );
     colors.insert(
         "neutral".into(),
@@ -83,8 +83,8 @@ pub fn insert_default_colors(colors: &mut Colors) {
             ("900".into(), [23, 23, 23, 255]),
             ("950".into(), [10, 10, 10, 255]),
         ]
-        .into_iter()
-        .collect(),
+            .into_iter()
+            .collect(),
     );
     colors.insert(
         "stone".into(),
@@ -101,8 +101,8 @@ pub fn insert_default_colors(colors: &mut Colors) {
             ("900".into(), [28, 25, 23, 255]),
             ("950".into(), [12, 10, 9, 255]),
         ]
-        .into_iter()
-        .collect(),
+            .into_iter()
+            .collect(),
     );
     colors.insert(
         "red".into(),
@@ -119,8 +119,8 @@ pub fn insert_default_colors(colors: &mut Colors) {
             ("900".into(), [127, 29, 29, 255]),
             ("950".into(), [69, 10, 10, 255]),
         ]
-        .into_iter()
-        .collect(),
+            .into_iter()
+            .collect(),
     );
     colors.insert(
         "orange".into(),
@@ -137,8 +137,8 @@ pub fn insert_default_colors(colors: &mut Colors) {
             ("900".into(), [124, 45, 18, 255]),
             ("950".into(), [67, 20, 7, 255]),
         ]
-        .into_iter()
-        .collect(),
+            .into_iter()
+            .collect(),
     );
     colors.insert(
         "amber".into(),
@@ -155,8 +155,8 @@ pub fn insert_default_colors(colors: &mut Colors) {
             ("900".into(), [120, 53, 15, 255]),
             ("950".into(), [69, 26, 3, 255]),
         ]
-        .into_iter()
-        .collect(),
+            .into_iter()
+            .collect(),
     );
     colors.insert(
         "yellow".into(),
@@ -173,8 +173,8 @@ pub fn insert_default_colors(colors: &mut Colors) {
             ("900".into(), [113, 63, 18, 255]),
             ("950".into(), [66, 32, 6, 255]),
         ]
-        .into_iter()
-        .collect(),
+            .into_iter()
+            .collect(),
     );
     colors.insert(
         "lime".into(),
@@ -191,8 +191,8 @@ pub fn insert_default_colors(colors: &mut Colors) {
             ("900".into(), [54, 83, 20, 255]),
             ("950".into(), [26, 46, 5, 255]),
         ]
-        .into_iter()
-        .collect(),
+            .into_iter()
+            .collect(),
     );
     colors.insert(
         "green".into(),
@@ -209,8 +209,8 @@ pub fn insert_default_colors(colors: &mut Colors) {
             ("900".into(), [20, 83, 45, 255]),
             ("950".into(), [5, 46, 22, 255]),
         ]
-        .into_iter()
-        .collect(),
+            .into_iter()
+            .collect(),
     );
     colors.insert(
         "emerald".into(),
@@ -227,8 +227,8 @@ pub fn insert_default_colors(colors: &mut Colors) {
             ("900".into(), [6, 78, 59, 255]),
             ("950".into(), [2, 44, 34, 255]),
         ]
-        .into_iter()
-        .collect(),
+            .into_iter()
+            .collect(),
     );
     colors.insert(
         "teal".into(),
@@ -245,8 +245,8 @@ pub fn insert_default_colors(colors: &mut Colors) {
             ("900".into(), [19, 78, 74, 255]),
             ("950".into(), [4, 47, 46, 255]),
         ]
-        .into_iter()
-        .collect(),
+            .into_iter()
+            .collect(),
     );
     colors.insert(
         "cyan".into(),
@@ -263,8 +263,8 @@ pub fn insert_default_colors(colors: &mut Colors) {
             ("900".into(), [22, 78, 99, 255]),
             ("950".into(), [8, 51, 68, 255]),
         ]
-        .into_iter()
-        .collect(),
+            .into_iter()
+            .collect(),
     );
     colors.insert(
         "sky".into(),
@@ -281,8 +281,8 @@ pub fn insert_default_colors(colors: &mut Colors) {
             ("900".into(), [12, 74, 110, 255]),
             ("950".into(), [8, 47, 73, 255]),
         ]
-        .into_iter()
-        .collect(),
+            .into_iter()
+            .collect(),
     );
     colors.insert(
         "blue".into(),
@@ -299,8 +299,8 @@ pub fn insert_default_colors(colors: &mut Colors) {
             ("900".into(), [30, 58, 138, 255]),
             ("950".into(), [23, 37, 84, 255]),
         ]
-        .into_iter()
-        .collect(),
+            .into_iter()
+            .collect(),
     );
     colors.insert(
         "indigo".into(),
@@ -317,8 +317,8 @@ pub fn insert_default_colors(colors: &mut Colors) {
             ("900".into(), [49, 46, 129, 255]),
             ("950".into(), [30, 27, 75, 255]),
         ]
-        .into_iter()
-        .collect(),
+            .into_iter()
+            .collect(),
     );
     colors.insert(
         "violet".into(),
@@ -335,8 +335,8 @@ pub fn insert_default_colors(colors: &mut Colors) {
             ("900".into(), [76, 29, 149, 255]),
             ("950".into(), [46, 16, 101, 255]),
         ]
-        .into_iter()
-        .collect(),
+            .into_iter()
+            .collect(),
     );
     colors.insert(
         "purple".into(),
@@ -353,8 +353,8 @@ pub fn insert_default_colors(colors: &mut Colors) {
             ("900".into(), [88, 28, 135, 255]),
             ("950".into(), [59, 7, 100, 255]),
         ]
-        .into_iter()
-        .collect(),
+            .into_iter()
+            .collect(),
     );
     colors.insert(
         "fuchsia".into(),
@@ -371,8 +371,8 @@ pub fn insert_default_colors(colors: &mut Colors) {
             ("900".into(), [112, 26, 117, 255]),
             ("950".into(), [74, 4, 78, 255]),
         ]
-        .into_iter()
-        .collect(),
+            .into_iter()
+            .collect(),
     );
     colors.insert(
         "pink".into(),
@@ -389,8 +389,8 @@ pub fn insert_default_colors(colors: &mut Colors) {
             ("900".into(), [131, 24, 67, 255]),
             ("950".into(), [80, 7, 36, 255]),
         ]
-        .into_iter()
-        .collect(),
+            .into_iter()
+            .collect(),
     );
     colors.insert(
         "rose".into(),
@@ -407,8 +407,8 @@ pub fn insert_default_colors(colors: &mut Colors) {
             ("900".into(), [136, 19, 55, 255]),
             ("950".into(), [76, 5, 25, 255]),
         ]
-        .into_iter()
-        .collect(),
+            .into_iter()
+            .collect(),
     );
 }
 

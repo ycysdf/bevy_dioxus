@@ -1,13 +1,15 @@
 #![allow(non_upper_case_globals)]
 #![allow(non_camel_case_types)]
 
-use crate::prelude::{Click, ListenerInput, On, Pointer, World};
-use crate::{default_clone_component, impl_schema_type_base, PropValue, SchemaType};
+use std::any::{TypeId};
+
 use bevy::ecs::component::ComponentInfo;
 use bevy::ecs::world::EntityMut;
 use bevy::prelude::*;
 use bevy_cosmic_edit::*;
-use std::any::{Any, TypeId};
+
+use crate::{impl_schema_type_base, SchemaType};
+use crate::prelude::World;
 
 fn bevy_color_to_cosmic(color: Color) -> CosmicColor {
     cosmic_text::Color::rgba(
@@ -22,7 +24,7 @@ impl_schema_type_base!(input);
 impl SchemaType for input {
     fn spawn<'w>(&self, world: &'w mut World) -> EntityMut<'w> {
         let attrs = AttrsOwned::new(Attrs::new().color(bevy_color_to_cosmic(Color::BLACK)));
-        let placeholder_attrs = AttrsOwned::new(
+        let _placeholder_attrs = AttrsOwned::new(
             Attrs::new().color(bevy_color_to_cosmic(Color::hex("#e6e6e6").unwrap())),
         );
 
@@ -45,7 +47,7 @@ impl SchemaType for input {
             text_setter: CosmicText::OneStyle(String::from("")),
             mode: CosmicMode::InfiniteLine,
             ..default()
-        },))
+        }, ))
     }
 
     fn try_insert_no_reflect_components(

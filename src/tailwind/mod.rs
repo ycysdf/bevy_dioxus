@@ -1,19 +1,21 @@
+use std::ops::Deref;
+
 use bevy::prelude::{Component, Visibility};
 use bevy::reflect::Reflect;
+use bevy::text::BreakLineOn;
 use bevy::ui::*;
 use bevy::utils::{default, HashMap};
 use smallvec::{smallvec, SmallVec};
-use std::ops::Deref;
 
-use crate::smallbox::S1;
+pub use colors::*;
+
 use crate::{schema_props, SchemaPropUntyped, SchemaTypeUnTyped, SetAttrValueContext};
 use crate::{smallbox, SmallBox};
-use crate::{try_get_schema_type, OptionalOverflow, PropValue, Texture, UiOptionalRect};
+use crate::{OptionalOverflow, PropValue, Texture, try_get_schema_type, UiOptionalRect};
+use crate::prelude::{TextAlignment, warn};
+use crate::smallbox::S1;
 
 mod colors;
-
-use crate::prelude::warn;
-pub use colors::*;
 
 #[derive(Default)]
 pub struct TailwindClassItem(
@@ -346,12 +348,20 @@ fn parse_class_inner<'a>(
                     default()
                 }
             } else if let Some(class) = class.strip_prefix("text-") {
-                if let Some(color) = parse_color(class) {
-                    smallvec![(&schema_props::text_color as _, smallbox!(color)),]
-                } else if let Ok(size) = class.parse::<f32>() {
-                    smallvec![(&schema_props::font_size as _, smallbox!(size)),]
-                } else {
-                    default()
+                match class {
+                    "nowrap" => smallvec![(&schema_props::text_linebreak_behavior as _, smallbox!(BreakLineOn::NoWrap)),],
+                    "left" => smallvec![(&schema_props::text_align as _, smallbox!(TextAlignment::Left)),],
+                    "center" => smallvec![(&schema_props::text_align as _, smallbox!(TextAlignment::Center)),],
+                    "right" => smallvec![(&schema_props::text_align as _, smallbox!(TextAlignment::Right)),],
+                    _ => {
+                        if let Some(color) = parse_color(class) {
+                            smallvec![(&schema_props::text_color as _, smallbox!(color)),]
+                        } else if let Ok(size) = class.parse::<f32>() {
+                            smallvec![(&schema_props::font_size as _, smallbox!(size)),]
+                        } else {
+                            default()
+                        }
+                    }
                 }
             } else if let Some(class) = class.strip_prefix("p-") {
                 let padding = parse_size_val(class);
@@ -521,6 +531,6 @@ fn parse_border_size(class: &str, f: fn(val: Val) -> UiOptionalRect) -> UiOption
     } else if let Some(class) = class.strip_prefix("-") {
         f(parse_size_val(class))
     } else {
-        UiOptionalRect::default()
+        UiOptionalRect::default_value()
     }
 }
