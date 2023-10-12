@@ -4,11 +4,11 @@ use bevy::reflect::TypePath;
 use bevy::text::BreakLineOn;
 use serde::{Deserialize, Serialize};
 
-use crate::{PropValue, SmallBox, smallbox};
 use crate::dom_commands::DomAttributeValue;
 use crate::entity_extra_data::{EntitiesExtraData, EntityExtraData};
 use crate::smallbox::S1;
 use crate::tailwind::{parse_color, parse_size_val};
+use crate::{smallbox, PropValue, SmallBox};
 
 pub struct SetAttrValueContext<'w> {
     pub entities_extra_data: &'w mut EntitiesExtraData,
@@ -717,7 +717,6 @@ impl From<DomAttributeValue> for Option<TextAlignment> {
     }
 } */
 
-
 impl PropValue for Color {
     fn clone_prop_value(&self) -> SmallBox<dyn PropValue, S1> {
         smallbox!(self.clone())
@@ -798,6 +797,14 @@ impl PropValue for UiOptionalRect {
     fn default_value() -> Self {
         <Self as Default>::default()
     }
+
+    fn merge_value(&mut self, value: SmallBox<dyn PropValue, S1>) {
+        let value = *value.downcast::<Self>().ok().unwrap();
+        self.left = self.left.or_else(|| value.left);
+        self.right = self.right.or_else(|| value.right);
+        self.top = self.top.or_else(|| value.top);
+        self.bottom = self.bottom.or_else(|| value.bottom);
+    }
 }
 
 impl PropValue for Display {
@@ -824,6 +831,12 @@ impl PropValue for OptionalOverflow {
     }
     fn default_value() -> Self {
         <Self as Default>::default()
+    }
+
+    fn merge_value(&mut self, value: SmallBox<dyn PropValue, S1>) {
+        let value = *value.downcast::<Self>().ok().unwrap();
+        self.x = self.x.or_else(|| value.x);
+        self.y = self.y.or_else(|| value.y);
     }
 }
 
@@ -985,7 +998,10 @@ impl PropValue for String {
         smallbox!(self.clone())
     }
 
-    fn default_value() -> Self where Self: Sized {
+    fn default_value() -> Self
+    where
+        Self: Sized,
+    {
         <Self as Default>::default()
     }
 }
@@ -1000,7 +1016,10 @@ impl<T: PropValue + TypePath + FromReflect + Clone> PropValue for Option<T> {
         })
     }
 
-    fn default_value() -> Self where Self: Sized {
+    fn default_value() -> Self
+    where
+        Self: Sized,
+    {
         <Self as Default>::default()
     }
 }

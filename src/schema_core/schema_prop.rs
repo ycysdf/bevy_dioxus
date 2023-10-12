@@ -1,18 +1,20 @@
 use std::ops::Deref;
 
-use crate::SetAttrValueContext;
-use crate::SmallBox;
 use crate::dom_commands::DomAttributeValue;
 use crate::prelude::Reflect;
 use crate::smallbox::S1;
+use crate::SetAttrValueContext;
+use crate::SmallBox;
 
 pub type DioxusAttributeDescription = (&'static str, Option<&'static str>, bool);
 
-pub trait PropValue: Reflect + Send + Sync + 'static
-// where Option<Self>: From<DomAttributeValue>
+pub trait PropValue: Reflect + Send + Sync + 'static // where Option<Self>: From<DomAttributeValue>
 {
     fn clone_prop_value(&self) -> SmallBox<dyn PropValue, S1>;
-    fn default_value() -> Self where Self: Sized;
+    fn default_value() -> Self
+    where
+        Self: Sized;
+    fn merge_value(&mut self, _value: SmallBox<dyn PropValue, S1>) {}
 }
 
 impl Clone for SmallBox<dyn PropValue, S1> {
@@ -47,8 +49,8 @@ pub trait SchemaPropUntyped: Send + Sync {
 }
 
 impl<T: SchemaProp> SchemaPropUntyped for T
-    where
-        Option<T::Value>: From<DomAttributeValue>,
+where
+    Option<T::Value>: From<DomAttributeValue>,
 {
     #[inline]
     fn name(&self) -> &'static str {
@@ -101,8 +103,8 @@ impl<T: SchemaProp> SchemaPropUntyped for T
 }
 
 pub trait SchemaProp: Send + Sync
-    where
-        Option<Self::Value>: From<DomAttributeValue>,
+where
+    Option<Self::Value>: From<DomAttributeValue>,
 {
     type Value: PropValue + Sized;
 

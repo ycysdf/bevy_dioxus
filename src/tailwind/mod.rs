@@ -9,11 +9,11 @@ use smallvec::{smallvec, SmallVec};
 
 pub use colors::*;
 
+use crate::prelude::{warn, TextAlignment};
+use crate::smallbox::S1;
 use crate::{schema_props, SchemaPropUntyped, SchemaTypeUnTyped, SetAttrValueContext};
 use crate::{smallbox, SmallBox};
-use crate::{OptionalOverflow, PropValue, Texture, try_get_schema_type, UiOptionalRect};
-use crate::prelude::{TextAlignment, warn};
-use crate::smallbox::S1;
+use crate::{try_get_schema_type, OptionalOverflow, PropValue, Texture, UiOptionalRect};
 
 mod colors;
 
@@ -53,8 +53,8 @@ pub fn handle_classes(context: &mut SetAttrValueContext, classes: &str) {
         .collect::<Vec<_>>();
     items.sort_by(|(index, n), (other_index, other)| {
         use std::cmp::Ordering;
-        let left = other.1;
-        let right = n.1;
+        let left = n.1;
+        let right = other.1;
         match left {
             Interaction::Pressed => match right {
                 Interaction::Pressed => index.cmp(other_index),
@@ -74,40 +74,28 @@ pub fn handle_classes(context: &mut SetAttrValueContext, classes: &str) {
         }
     });
     let mut normal_props_map = HashMap::new();
-    let mut interaction_prop_set: u64 = 0;
     for (_index, item) in items {
         if item.1 != Interaction::None {
             interaction_classes.push(Clone::clone(&item));
         }
 
         for (prop, value) in item.0.into_iter() {
-            let prop_is_no_set = set_bits & !(1 << prop.index()) == set_bits;
-            if item.1 != Interaction::None {
-                interaction_prop_set |= (1 << prop.index());
-            }
             match (item.1, interaction) {
-                (Interaction::Pressed, Interaction::Pressed) => {
-                    if prop_is_no_set {
-                        prop.set_dyn_value_in_class(context, value);
-                        set_bits |= (1 << prop.index());
-                    }
-                }
-                // (Interaction::Pressed,_) => {
-                // }
-                (Interaction::Hovered, Interaction::Hovered | Interaction::Pressed) => {
-                    if prop_is_no_set {
-                        prop.set_dyn_value_in_class(context, value);
-                        set_bits |= (1 << prop.index());
-                    }
+                (Interaction::Pressed, Interaction::Pressed)
+                | (Interaction::Hovered, Interaction::Hovered | Interaction::Pressed) => {
+                    prop.set_dyn_value_in_class(context, value);
+                    set_bits |= (1 << prop.index());
                 }
                 (Interaction::None, _) => {
-                    if interaction_prop_set & !(1 << prop.index()) != interaction_prop_set {
+                    if let Some(previous_value) = normal_props_map.remove(&prop.index()) {
+                        let mut value = value.clone();
+                        value.merge_value(previous_value);
+                        normal_props_map.insert(prop.index(), value);
+                    } else {
                         normal_props_map.insert(prop.index(), value.clone());
                     }
-                    if prop_is_no_set {
-                        prop.set_dyn_value_in_class(context, value);
-                        set_bits |= (1 << prop.index());
-                    }
+                    prop.set_dyn_value_in_class(context, value);
+                    set_bits |= (1 << prop.index());
                 }
                 _ => {}
             }
@@ -349,10 +337,22 @@ fn parse_class_inner<'a>(
                 }
             } else if let Some(class) = class.strip_prefix("text-") {
                 match class {
-                    "nowrap" => smallvec![(&schema_props::text_linebreak_behavior as _, smallbox!(BreakLineOn::NoWrap)),],
-                    "left" => smallvec![(&schema_props::text_align as _, smallbox!(TextAlignment::Left)),],
-                    "center" => smallvec![(&schema_props::text_align as _, smallbox!(TextAlignment::Center)),],
-                    "right" => smallvec![(&schema_props::text_align as _, smallbox!(TextAlignment::Right)),],
+                    "nowrap" => smallvec![(
+                        &schema_props::text_linebreak_behavior as _,
+                        smallbox!(BreakLineOn::NoWrap)
+                    ),],
+                    "left" => smallvec![(
+                        &schema_props::text_align as _,
+                        smallbox!(TextAlignment::Left)
+                    ),],
+                    "center" => smallvec![(
+                        &schema_props::text_align as _,
+                        smallbox!(TextAlignment::Center)
+                    ),],
+                    "right" => smallvec![(
+                        &schema_props::text_align as _,
+                        smallbox!(TextAlignment::Right)
+                    ),],
                     _ => {
                         if let Some(color) = parse_color(class) {
                             smallvec![(&schema_props::text_color as _, smallbox!(color)),]
@@ -445,6 +445,11 @@ fn parse_class_inner<'a>(
                         smallvec![(
                             &schema_props::border_color as _,
                             smallbox!(BorderColor(color))
+                        ),]
+                    } else if let Ok(size) = class.parse::<f32>() {
+                        smallvec![(
+                            &schema_props::border as _,
+                            smallbox!(UiOptionalRect::all(Val::Px(size as f32)))
                         ),]
                     } else if let Some(class) = class.strip_prefix("t") {
                         smallvec![(
