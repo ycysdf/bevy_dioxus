@@ -112,6 +112,10 @@ macro_rules! common_props_define {
             crate::schema_props::text_color::ATTRIBUTE_DESCRIPTION;
         pub const font_size: crate::DioxusAttributeDescription =
             crate::schema_props::font_size::ATTRIBUTE_DESCRIPTION;
+        pub const text_linebreak_behavior: crate::DioxusAttributeDescription =
+            crate::schema_props::text_linebreak_behavior::ATTRIBUTE_DESCRIPTION;
+        pub const text_align: crate::DioxusAttributeDescription =
+            crate::schema_props::text_align::ATTRIBUTE_DESCRIPTION;
     };
 }
 
@@ -171,6 +175,8 @@ macro_rules! impl_schema_type_base {
                 &crate::schema_props::scale,
                 &crate::schema_props::text_color,
                 &crate::schema_props::font_size,
+                &crate::schema_props::text_linebreak_behavior,
+                &crate::schema_props::text_align,
                 $(&$prop,)*
             ];
         }

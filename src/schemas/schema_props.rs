@@ -14,7 +14,7 @@ use crate::schema_core::SchemaProp;
 use crate::smallbox::S1;
 use crate::tailwind::handle_classes;
 
-pub const COMMON_PROPS_COUNT: u8 = 42;
+pub const COMMON_PROPS_COUNT: u8 = 44;
 
 pub struct class;
 
@@ -781,7 +781,7 @@ impl SchemaProp for text_color {
 
     const TAG_NAME: &'static str = stringify!(text_color);
 
-    const INDEX: u8 = 39;
+    const INDEX: u8 = 40;
     fn set_value(&self, context: &mut SetAttrValueContext, value: impl Into<Self::Value>) {
         let value = value.into();
         set_text_value(context, move |mut text| {
@@ -799,7 +799,7 @@ impl SchemaProp for font_size {
 
     const TAG_NAME: &'static str = stringify!(font_size);
 
-    const INDEX: u8 = 39;
+    const INDEX: u8 = 41;
     fn set_value(&self, context: &mut SetAttrValueContext, value: impl Into<Self::Value>) {
         let value = value.into();
         set_text_value(context, move |mut text| {
@@ -817,7 +817,7 @@ impl SchemaProp for text_linebreak_behavior {
 
     const TAG_NAME: &'static str = stringify!(text_color);
 
-    const INDEX: u8 = 39;
+    const INDEX: u8 = 42;
     fn set_value(&self, context: &mut SetAttrValueContext, value: impl Into<Self::Value>) {
         let value = value.into();
         set_text_value(context, move |mut text| {
@@ -834,7 +834,7 @@ impl SchemaProp for text_align {
 
     const TAG_NAME: &'static str = stringify!(text_align);
 
-    const INDEX: u8 = 39;
+    const INDEX: u8 = 43;
     fn set_value(&self, context: &mut SetAttrValueContext, value: impl Into<Self::Value>) {
         let value = value.into();
         set_text_value(context, move |mut text| {
