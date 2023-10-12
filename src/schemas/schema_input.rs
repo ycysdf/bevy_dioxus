@@ -1,17 +1,16 @@
 #![allow(non_upper_case_globals)]
 #![allow(non_camel_case_types)]
 
-use std::any::{TypeId};
-
+use crate::schema_props::COMMON_PROPS_COUNT;
+use crate::{impl_schema_type_base, ReflectTextSchemaType, SchemaType, SetAttrValueContext};
+use crate::{prelude::*, TextSchemaType};
 use bevy::ecs::component::ComponentInfo;
 use bevy::ecs::world::EntityMut;
-use bevy::prelude::*;
+use bevy::reflect::Reflect;
 use bevy_cosmic_edit::*;
+use std::any::TypeId;
 
-use crate::{impl_schema_type_base, SchemaType};
-use crate::prelude::World;
-
-fn bevy_color_to_cosmic(color: Color) -> CosmicColor {
+pub fn bevy_color_to_cosmic(color: Color) -> CosmicColor {
     cosmic_text::Color::rgba(
         (color.r() * 255.) as u8,
         (color.g() * 255.) as u8,
@@ -19,7 +18,14 @@ fn bevy_color_to_cosmic(color: Color) -> CosmicColor {
         (color.a() * 255.) as u8,
     )
 }
-impl_schema_type_base!(input);
+use input_props::*;
+
+impl_schema_type_base!(
+    #[derive(Reflect, Debug, Clone, Copy)]
+    #[reflect(TextSchemaType)]
+    input,
+    text_value
+);
 
 impl SchemaType for input {
     fn spawn<'w>(&self, world: &'w mut World) -> EntityMut<'w> {
@@ -47,7 +53,7 @@ impl SchemaType for input {
             text_setter: CosmicText::OneStyle(String::from("")),
             mode: CosmicMode::InfiniteLine,
             ..default()
-        }, ))
+        },))
     }
 
     fn try_insert_no_reflect_components(
@@ -96,5 +102,95 @@ impl SchemaType for input {
             _ => return false,
         }
         true
+    }
+}
+
+impl TextSchemaType for input {
+    fn set_font(
+        &self,
+        entity_ref: &mut EntityMut,
+        v: <crate::schema_props::font as SchemaProp>::Value,
+    ) {
+        let Some(mut attrs) = entity_ref.get_mut::<CosmicAttrs>() else {
+            return;
+        };
+        // todo: CosmicText font set
+        //        attrs.0.family_owned
+    }
+
+    fn set_font_size(
+        &self,
+        entity_ref: &mut EntityMut,
+        v: <crate::schema_props::font_size as SchemaProp>::Value,
+    ) {
+        let Some(mut metrics) = entity_ref.get_mut::<CosmicMetrics>() else {
+            return;
+        };
+        metrics.font_size = v;
+    }
+
+    fn set_text_color(
+        &self,
+        entity_ref: &mut EntityMut,
+        v: <crate::schema_props::text_color as SchemaProp>::Value,
+    ) {
+        let Some(mut attrs) = entity_ref.get_mut::<CosmicAttrs>() else {
+            return;
+        };
+        attrs.0.color_opt = Some(bevy_color_to_cosmic(v));
+    }
+
+    fn set_text_linebreak(
+        &self,
+        entity_ref: &mut EntityMut,
+        v: <crate::schema_props::text_linebreak as SchemaProp>::Value,
+    ) {
+        // todo: CosmicText text_linebreak
+    }
+
+    fn set_text_align(
+        &self,
+        entity_ref: &mut EntityMut,
+        v: <crate::schema_props::text_align as SchemaProp>::Value,
+    ) {
+        let Some(mut pos) = entity_ref.get_mut::<CosmicTextPosition>() else {
+            return;
+        };
+        match v {
+            TextAlignment::Left => {
+                if !matches!(*pos, CosmicTextPosition::Left { .. }) {
+                    *pos = CosmicTextPosition::Left { padding: 0 }
+                }
+            }
+            TextAlignment::Center => {
+                *pos = CosmicTextPosition::Center;
+            }
+            TextAlignment::Right => {
+                //                if !matches!(*pos, CosmicTextPosition::Right { .. }) {
+                //                    *pos = CosmicTextPosition::Right { padding: 0 }
+                //                }
+            }
+        }
+    }
+}
+
+pub mod input_props {
+    use super::*;
+
+    pub struct text_value;
+
+    impl SchemaProp for text_value {
+        type Value = String;
+
+        const TAG_NAME: &'static str = stringify!(value);
+        const INDEX: u8 = COMMON_PROPS_COUNT + 0;
+
+        fn set_value(&self, context: &mut SetAttrValueContext, p_value: impl Into<Self::Value>) {
+            if let Some(mut t) = context.entity_ref.get_mut::<CosmicText>() {
+                *t = CosmicText::OneStyle(p_value.into());
+            } else {
+                warn!("no found CosmicText component!");
+            }
+        }
     }
 }

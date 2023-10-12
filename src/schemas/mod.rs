@@ -1,9 +1,14 @@
+use bevy::{
+    ecs::world::EntityMut,
+    prelude::{Children, Entity},
+    reflect::reflect_trait,
+};
 pub use schema_attribute_values::*;
 pub use schema_input::*;
 pub use schema_text::*;
 pub use schema_view::*;
 
-use crate::schema_core::SchemaTypeUnTyped;
+use crate::{schema_core::SchemaTypeUnTyped, SchemaProp};
 
 mod schema_attribute_values;
 pub mod schema_events;
@@ -11,6 +16,66 @@ mod schema_input;
 pub mod schema_props;
 mod schema_text;
 mod schema_view;
+
+#[reflect_trait]
+pub trait TextSchemaType {
+    fn set_font(
+        &self,
+        entity_ref: &mut EntityMut,
+        value: <schema_props::font as SchemaProp>::Value,
+    );
+    fn set_font_size(
+        &self,
+        entity_ref: &mut EntityMut,
+        value: <schema_props::font_size as SchemaProp>::Value,
+    );
+    fn set_text_color(
+        &self,
+        entity_ref: &mut EntityMut,
+        value: <schema_props::text_color as SchemaProp>::Value,
+    );
+    fn set_text_linebreak(
+        &self,
+        entity_ref: &mut EntityMut,
+        value: <schema_props::text_linebreak as SchemaProp>::Value,
+    );
+    fn set_text_align(
+        &self,
+        entity_ref: &mut EntityMut,
+        value: <schema_props::text_align as SchemaProp>::Value,
+    );
+}
+
+pub fn context_children_scope(
+    context: &mut SetAttrValueContext,
+    mut f: impl FnMut(Entity, &mut SetAttrValueContext),
+) {
+    let Some(children) = context.entity_ref.get_mut::<Children>() else {
+        return;
+    };
+    let children: Vec<Entity> = children.into_iter().copied().collect();
+    for entity in children {
+        f(entity, context);
+    }
+}
+
+pub fn set_text_value(
+    context: &mut SetAttrValueContext,
+    mut f: impl FnMut(&'static dyn TextSchemaType, &mut EntityMut),
+) {
+    if let Some(text_schema_type) = context.get_text_schema_type() {
+        f(text_schema_type, context.entity_ref);
+    } else {
+        context_children_scope(context, move |entity, context| {
+            let Some(text_schema_type) = context.get_entity_text_schema_type(entity) else {
+                return;
+            };
+            context.entity_mut_scope(entity, |entity_ref| {
+                f(text_schema_type, entity_ref);
+            });
+        });
+    }
+}
 
 pub fn try_get_schema_type(name: &str) -> Option<&'static dyn SchemaTypeUnTyped> {
     match name {
@@ -25,7 +90,6 @@ pub fn try_get_schema_type(name: &str) -> Option<&'static dyn SchemaTypeUnTyped>
 pub fn get_schema_type(name: &str) -> &'static dyn SchemaTypeUnTyped {
     try_get_schema_type(name).expect(&format!("No Found SchemaType by {:#?}", name))
 }
-
 
 #[macro_export]
 macro_rules! common_props_define {
@@ -112,18 +176,20 @@ macro_rules! common_props_define {
             crate::schema_props::text_color::ATTRIBUTE_DESCRIPTION;
         pub const font_size: crate::DioxusAttributeDescription =
             crate::schema_props::font_size::ATTRIBUTE_DESCRIPTION;
-        pub const text_linebreak_behavior: crate::DioxusAttributeDescription =
-            crate::schema_props::text_linebreak_behavior::ATTRIBUTE_DESCRIPTION;
+        pub const text_linebreak: crate::DioxusAttributeDescription =
+            crate::schema_props::text_linebreak::ATTRIBUTE_DESCRIPTION;
         pub const text_align: crate::DioxusAttributeDescription =
             crate::schema_props::text_align::ATTRIBUTE_DESCRIPTION;
+        pub const font: crate::DioxusAttributeDescription =
+            crate::schema_props::font::ATTRIBUTE_DESCRIPTION;
     };
 }
 
 #[macro_export]
 macro_rules! impl_schema_type_base {
-    ($name:ident,$($prop:ident),*) => {
-        use crate::schema_core::{SchemaProp};
-
+    ($(#[$attr:meta])*$name:ident,$($prop:ident),*) => {
+        use crate::schema_core::SchemaProp;
+        $( #[$attr] )*
         pub struct $name;
         impl $name {
             crate::common_props_define!();
@@ -175,14 +241,15 @@ macro_rules! impl_schema_type_base {
                 &crate::schema_props::scale,
                 &crate::schema_props::text_color,
                 &crate::schema_props::font_size,
-                &crate::schema_props::text_linebreak_behavior,
+                &crate::schema_props::text_linebreak,
                 &crate::schema_props::text_align,
+                &crate::schema_props::font,
                 $(&$prop,)*
             ];
         }
     };
-    ($name:ident) => {
-        impl_schema_type_base!($name,);
+    ($(#[$attr:meta])*$name:ident) => {
+        impl_schema_type_base!($( #[$attr] )*$name,);
     }
 }
 

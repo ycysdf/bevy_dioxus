@@ -6,15 +6,18 @@ use bevy::text::BreakLineOn;
 use bevy::ui;
 use bevy::ui::widget::UiImageSize;
 
-use crate::{PropValue, schemas, SchemaTypeBase, SmallBox};
-use crate::{OptionalOverflow, SetAttrValueContext, Texture, UiOptionalRect};
 use crate::dom_commands::DomAttributeValue;
 use crate::ecs_fns::StyleEntityExt;
 use crate::schema_core::SchemaProp;
 use crate::smallbox::S1;
 use crate::tailwind::handle_classes;
+use crate::{
+    get_schema_type, schemas, PropValue, ReflectTextSchemaType, SchemaTypeBase, SmallBox,
+    TextSchemaType, set_text_value,
+};
+use crate::{OptionalOverflow, SetAttrValueContext, Texture, UiOptionalRect};
 
-pub const COMMON_PROPS_COUNT: u8 = 44;
+pub const COMMON_PROPS_COUNT: u8 = 45;
 
 pub struct class;
 
@@ -741,39 +744,6 @@ impl SchemaProp for scale {
         }
     }
 }
-
-fn set_text_value(context: &mut SetAttrValueContext, mut f: impl FnMut(Mut<Text>)) {
-    let mut entity_set_value = |entity_ref: &mut EntityMut| {
-        if let Some(text) = entity_ref.get_mut::<Text>() {
-            f(text)
-        }
-    };
-    if context.entity_extra_data().schema_name != schemas::text::NAME {
-        let children = context
-            .entity_ref
-            .get_mut::<Children>()
-            .map(|c| {
-                c.into_iter()
-                    .filter(|e| {
-                        context
-                            .entities_extra_data
-                            .get(*e)
-                            .is_some_and(|n| n.schema_name == schemas::text::NAME)
-                    })
-                    .copied()
-                    .collect::<Vec<_>>()
-            })
-            .unwrap_or_default();
-        for entity in children {
-            context.entity_ref.world_scope(|world| {
-                entity_set_value(&mut world.entity_mut(entity));
-            })
-        }
-    } else {
-        entity_set_value(context.entity_ref);
-    }
-}
-
 pub struct text_color;
 
 impl SchemaProp for text_color {
@@ -784,10 +754,8 @@ impl SchemaProp for text_color {
     const INDEX: u8 = 40;
     fn set_value(&self, context: &mut SetAttrValueContext, value: impl Into<Self::Value>) {
         let value = value.into();
-        set_text_value(context, move |mut text| {
-            for section in text.sections.iter_mut() {
-                section.style.color = value;
-            }
+        set_text_value(context, |text_schema_type, entity_ref| {
+            text_schema_type.set_text_color(entity_ref, value);
         });
     }
 }
@@ -802,30 +770,27 @@ impl SchemaProp for font_size {
     const INDEX: u8 = 41;
     fn set_value(&self, context: &mut SetAttrValueContext, value: impl Into<Self::Value>) {
         let value = value.into();
-        set_text_value(context, move |mut text| {
-            for section in text.sections.iter_mut() {
-                section.style.font_size = value;
-            }
+        set_text_value(context, |text_schema_type, entity_ref| {
+            text_schema_type.set_font_size(entity_ref, value);
         });
     }
 }
 
-pub struct text_linebreak_behavior;
+pub struct text_linebreak;
 
-impl SchemaProp for text_linebreak_behavior {
+impl SchemaProp for text_linebreak {
     type Value = BreakLineOn;
 
-    const TAG_NAME: &'static str = stringify!(text_color);
+    const TAG_NAME: &'static str = stringify!(text_linebreak);
 
     const INDEX: u8 = 42;
     fn set_value(&self, context: &mut SetAttrValueContext, value: impl Into<Self::Value>) {
         let value = value.into();
-        set_text_value(context, move |mut text| {
-            text.linebreak_behavior = value;
+        set_text_value(context, |text_schema_type, entity_ref| {
+            text_schema_type.set_text_linebreak(entity_ref, value);
         });
     }
 }
-
 
 pub struct text_align;
 
@@ -837,8 +802,24 @@ impl SchemaProp for text_align {
     const INDEX: u8 = 43;
     fn set_value(&self, context: &mut SetAttrValueContext, value: impl Into<Self::Value>) {
         let value = value.into();
-        set_text_value(context, move |mut text| {
-            text.alignment = value;
+        set_text_value(context, |text_schema_type, entity_ref| {
+            text_schema_type.set_text_align(entity_ref, value);
+        });
+    }
+}
+
+pub struct font;
+
+impl SchemaProp for font {
+    type Value = Handle<Font>;
+
+    const TAG_NAME: &'static str = stringify!(font);
+
+    const INDEX: u8 = 44;
+    fn set_value(&self, context: &mut SetAttrValueContext, value: impl Into<Self::Value>) {
+        let value = value.into();
+        set_text_value(context, |text_schema_type, entity_ref| {
+            text_schema_type.set_font(entity_ref, value.clone());
         });
     }
 }

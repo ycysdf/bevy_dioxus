@@ -1,6 +1,7 @@
+use bevy::asset::Asset;
 use bevy::ecs::world::EntityMut;
 use bevy::prelude::*;
-use bevy::reflect::TypePath;
+use bevy::reflect::{TypeData, TypePath};
 use bevy::text::BreakLineOn;
 use serde::{Deserialize, Serialize};
 
@@ -8,18 +9,57 @@ use crate::dom_commands::DomAttributeValue;
 use crate::entity_extra_data::{EntitiesExtraData, EntityExtraData};
 use crate::smallbox::S1;
 use crate::tailwind::{parse_color, parse_size_val};
-use crate::{smallbox, PropValue, SmallBox};
+use crate::{
+    get_schema_type, smallbox, PropValue, ReflectTextSchemaType, SchemaTypeUnTyped, SmallBox,
+    TextSchemaType,
+};
 
-pub struct SetAttrValueContext<'w> {
-    pub entities_extra_data: &'w mut EntitiesExtraData,
+pub struct SetAttrValueContext<'w, 'e> {
+    pub entities_extra_data: &'e mut EntitiesExtraData,
     pub entity_ref: &'w mut EntityMut<'w>,
 }
 
-impl<'w> SetAttrValueContext<'w> {
+impl<'w, 'e> SetAttrValueContext<'w, 'e> {
     pub fn entity_extra_data(&mut self) -> &mut EntityExtraData {
         self.entities_extra_data
             .get_mut(&self.entity_ref.id())
             .unwrap()
+    }
+    pub fn entity_mut_scope<U>(
+        &mut self,
+        entity: Entity,
+        f: impl FnOnce(&mut EntityMut) -> U,
+    ) {
+        self.entity_ref
+            .world_scope(|world| f(&mut world.entity_mut(entity)));
+    }
+    pub fn type_registry(&mut self) -> AppTypeRegistry {
+        let type_registry = self.entity_ref.world().resource::<AppTypeRegistry>();
+        type_registry.clone()
+    }
+
+    pub fn schema_type(&mut self) -> &'static dyn SchemaTypeUnTyped {
+        get_schema_type(self.entity_extra_data().schema_name)
+    }
+
+    pub fn get_text_schema_type(&mut self) -> Option<&'static dyn TextSchemaType> {
+        self.get_entity_text_schema_type(self.entity_ref.id())
+    }
+
+    pub fn get_entity_text_schema_type(
+        &mut self,
+        entity: Entity,
+    ) -> Option<&'static dyn TextSchemaType> {
+        let schema_name = self
+            .entities_extra_data
+            .get(&entity)
+            .map(|n| n.schema_name)?;
+        let schema_type = get_schema_type(schema_name);
+        let type_registry = self.type_registry();
+        let type_registry = type_registry.read();
+        type_registry
+            .get_type_data::<ReflectTextSchemaType>(schema_type.type_id())
+            .and_then(|n| n.get(schema_type.as_reflect()))
     }
 }
 
@@ -347,15 +387,15 @@ impl From<DomAttributeValue> for Option<OptionalOverflow> {
                     x: Some(OverflowAxis::Visible),
                     y: Some(OverflowAxis::Visible),
                 }),
-                "visible clip" | "visible hidden" => Some(OptionalOverflow {
+                "visible clip" => Some(OptionalOverflow {
                     x: Some(OverflowAxis::Clip),
                     y: Some(OverflowAxis::Clip),
                 }),
-                "clip" | "hidden" | "clip clip" | "hidden hidden" => Some(OptionalOverflow {
+                "clip" | "clip clip" => Some(OptionalOverflow {
                     x: Some(OverflowAxis::Clip),
                     y: Some(OverflowAxis::Clip),
                 }),
-                "clip visible" | "hidden visible" => Some(OptionalOverflow {
+                "clip visible" => Some(OptionalOverflow {
                     x: Some(OverflowAxis::Clip),
                     y: Some(OverflowAxis::Clip),
                 }),
@@ -716,6 +756,16 @@ impl From<DomAttributeValue> for Option<TextAlignment> {
         }
     }
 } */
+impl<T: Asset> From<DomAttributeValue> for Option<Handle<T>> {
+    fn from(value: DomAttributeValue) -> Self {
+        match value {
+            DomAttributeValue::Any(value) => {
+                <dyn Reflect>::downcast::<Handle<T>>(value).ok().map(|n| *n)
+            }
+            _ => None,
+        }
+    }
+}
 
 impl PropValue for Color {
     fn clone_prop_value(&self) -> SmallBox<dyn PropValue, S1> {
@@ -1014,6 +1064,19 @@ impl<T: PropValue + TypePath + FromReflect + Clone> PropValue for Option<T> {
                 Some(T::clone(n))
             }
         })
+    }
+
+    fn default_value() -> Self
+    where
+        Self: Sized,
+    {
+        <Self as Default>::default()
+    }
+}
+
+impl<T: Asset> PropValue for Handle<T> {
+    fn clone_prop_value(&self) -> SmallBox<dyn PropValue, S1> {
+        smallbox!(self.clone())
     }
 
     fn default_value() -> Self

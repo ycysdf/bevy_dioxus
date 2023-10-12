@@ -3,13 +3,13 @@ use std::any::Any;
 use bevy::ecs::component::ComponentInfo;
 use bevy::ecs::world::EntityMut;
 use bevy::prelude::World;
-use bevy::reflect::ReflectFromPtr;
+use bevy::reflect::{Reflect, ReflectFromPtr};
 
-use crate::prelude::{AppTypeRegistry, Entity, warn};
-use crate::ReflectExtension;
+use crate::prelude::{warn, AppTypeRegistry, Entity};
 use crate::schema_core::SchemaPropUntyped;
+use crate::ReflectExtension;
 
-pub trait SchemaTypeUnTyped {
+pub trait SchemaTypeUnTyped: Reflect {
     fn schema_name(&self) -> &'static str;
     fn namespace(&self) -> Option<&'static str>;
 
@@ -74,7 +74,7 @@ impl<T: SchemaTypeBase + SchemaType> SchemaTypeUnTyped for T {
     }
 }
 
-pub trait SchemaTypeBase {
+pub trait SchemaTypeBase: Reflect {
     const TAG_NAME: &'static str;
     const NAME_SPACE: Option<&'static str> = None;
     const PROPS: &'static [&'static dyn SchemaPropUntyped];

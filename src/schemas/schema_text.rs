@@ -1,21 +1,27 @@
 #![allow(non_upper_case_globals)]
 #![allow(non_camel_case_types)]
 
-use std::any::{TypeId};
+use std::any::TypeId;
 
+use crate::prelude::{warn, Entity, TextAlignment, World};
+use crate::schema_props::COMMON_PROPS_COUNT;
+use crate::{
+    impl_schema_type_base, SchemaType, SetAttrValueContext, TextSchemaType,
+    TextSections, ReflectTextSchemaType,
+};
 use bevy::ecs::component::ComponentInfo;
 use bevy::ecs::world::EntityMut;
-use bevy::prelude::{AppTypeRegistry, TextBundle};
+use bevy::prelude::{AppTypeRegistry, Color, TextBundle};
+use bevy::reflect::Reflect;
 use bevy::text::{BreakLineOn, Text, TextLayoutInfo};
 use bevy::ui::widget::TextFlags;
-
-use crate::{
-    impl_schema_type_base, SchemaType, SetAttrValueContext, TextSections,
-};
-use crate::prelude::{Entity, TextAlignment, warn, World};
-use crate::schema_props::COMMON_PROPS_COUNT;
-
-impl_schema_type_base!(text, sections);
+use text_props::*;
+impl_schema_type_base!(
+    #[derive(Reflect, Debug, Clone, Copy)]
+    #[reflect(TextSchemaType)]
+    text,
+    sections
+);
 
 impl SchemaType for text {
     fn spawn<'w>(&self, world: &'w mut World) -> EntityMut<'w> {
@@ -42,64 +48,95 @@ impl SchemaType for text {
     }
 }
 
-pub struct sections;
+impl TextSchemaType for text {
+    fn set_font(
+        &self,
+        entity_ref: &mut EntityMut,
+        value: <crate::schema_props::font as SchemaProp>::Value,
+    ) {
+        let Some(mut t) = entity_ref.get_mut::<Text>() else {
+            return;
+        };
+        for section in t.sections.iter_mut() {
+            section.style.font = value.clone();
+        }
+    }
 
-impl SchemaProp for sections {
-    type Value = TextSections;
+    fn set_font_size(
+        &self,
+        entity_ref: &mut EntityMut,
+        value: <crate::schema_props::font_size as SchemaProp>::Value,
+    ) {
+        let Some(mut t) = entity_ref.get_mut::<Text>() else {
+            return;
+        };
+        for section in t.sections.iter_mut() {
+            section.style.font_size = value;
+        }
+    }
 
-    const TAG_NAME: &'static str = "sections";
+    fn set_text_color(
+        &self,
+        entity_ref: &mut EntityMut,
+        value: <crate::schema_props::text_color as SchemaProp>::Value,
+    ) {
+        let Some(mut t) = entity_ref.get_mut::<Text>() else {
+            return;
+        };
+        for section in t.sections.iter_mut() {
+            section.style.color = value;
+        }
+    }
 
-    const INDEX: u8 = COMMON_PROPS_COUNT + 0;
-    fn set_value(&self, context: &mut SetAttrValueContext, value: impl Into<Self::Value>) {
-        if let Some(mut t) = context.entity_ref.get_mut::<Text>() {
-            t.sections = value.into().0;
-            if !context.entity_ref.contains::<TextFlags>() {
-                context.entity_ref.insert(TextFlags::default());
+    fn set_text_linebreak(
+        &self,
+        entity_ref: &mut EntityMut,
+        value: <crate::schema_props::text_linebreak as SchemaProp>::Value,
+    ) {
+        let Some(mut t) = entity_ref.get_mut::<Text>() else {
+            return;
+        };
+        t.linebreak_behavior = value;
+    }
+
+    fn set_text_align(
+        &self,
+        entity_ref: &mut EntityMut,
+        value: <crate::schema_props::text_align as SchemaProp>::Value,
+    ) {
+        let Some(mut t) = entity_ref.get_mut::<Text>() else {
+            return;
+        };
+        t.alignment = value;
+    }
+}
+
+pub mod text_props {
+    use super::*;
+    pub struct sections;
+
+    impl SchemaProp for sections {
+        type Value = TextSections;
+
+        const TAG_NAME: &'static str = "sections";
+
+        const INDEX: u8 = COMMON_PROPS_COUNT + 0;
+        fn set_value(&self, context: &mut SetAttrValueContext, value: impl Into<Self::Value>) {
+            if let Some(mut t) = context.entity_ref.get_mut::<Text>() {
+                t.sections = value.into().0;
+                if !context.entity_ref.contains::<TextFlags>() {
+                    context.entity_ref.insert(TextFlags::default());
+                }
+                if !context.entity_ref.contains::<TextLayoutInfo>() {
+                    context.entity_ref.insert(TextLayoutInfo::default());
+                }
+            } else {
+                context.entity_ref.insert((
+                    Text::from_sections(value.into().0),
+                    TextFlags::default(),
+                    TextLayoutInfo::default(),
+                ));
             }
-            if !context.entity_ref.contains::<TextLayoutInfo>() {
-                context.entity_ref.insert(TextLayoutInfo::default());
-            }
-        } else {
-            context.entity_ref.insert((
-                Text::from_sections(value.into().0),
-                TextFlags::default(),
-                TextLayoutInfo::default(),
-            ));
         }
     }
 }
-
-pub struct alignment;
-
-impl SchemaProp for alignment {
-    type Value = TextAlignment;
-
-    const TAG_NAME: &'static str = "alignment";
-    const INDEX: u8 = COMMON_PROPS_COUNT + 1;
-
-    fn set_value(&self, context: &mut SetAttrValueContext, value: impl Into<Self::Value>) {
-        if let Some(mut t) = context.entity_ref.get_mut::<Text>() {
-            t.alignment = value.into();
-        } else {
-            warn!("no found Text component!");
-        }
-    }
-}
-
-pub struct linebreak_behavior;
-
-impl SchemaProp for linebreak_behavior {
-    type Value = BreakLineOn;
-
-    const TAG_NAME: &'static str = "linebreak";
-
-    const INDEX: u8 = COMMON_PROPS_COUNT + 2;
-    fn set_value(&self, context: &mut SetAttrValueContext, value: impl Into<Self::Value>) {
-        if let Some(mut t) = context.entity_ref.get_mut::<Text>() {
-            t.linebreak_behavior = value.into();
-        } else {
-            warn!("no found Text component!");
-        }
-    }
-}
-

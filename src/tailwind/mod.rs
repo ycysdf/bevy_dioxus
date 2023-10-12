@@ -338,7 +338,7 @@ fn parse_class_inner<'a>(
             } else if let Some(class) = class.strip_prefix("text-") {
                 match class {
                     "nowrap" => smallvec![(
-                        &schema_props::text_linebreak_behavior as _,
+                        &schema_props::text_linebreak as _,
                         smallbox!(BreakLineOn::NoWrap)
                     ),],
                     "left" => smallvec![(
@@ -481,7 +481,7 @@ fn parse_class_inner<'a>(
                 smallvec![(
                     &schema_props::border as _,
                     smallbox!(match class {
-                        "hidden" => OptionalOverflow {
+                        "clip" => OptionalOverflow {
                             x: Some(OverflowAxis::Clip),
                             y: Some(OverflowAxis::Clip),
                         },
@@ -496,7 +496,7 @@ fn parse_class_inner<'a>(
                     &schema_props::border as _,
                     smallbox!(OptionalOverflow {
                         x: Some(match class {
-                            "hidden" => OverflowAxis::Clip,
+                            "clip" => OverflowAxis::Clip,
                             _ => OverflowAxis::Visible,
                         }),
                         ..default()
@@ -507,7 +507,7 @@ fn parse_class_inner<'a>(
                     &schema_props::border as _,
                     smallbox!(OptionalOverflow {
                         y: Some(match class {
-                            "hidden" => OverflowAxis::Clip,
+                            "clip" => OverflowAxis::Clip,
                             _ => OverflowAxis::Visible,
                         }),
                         ..default()
