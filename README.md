@@ -28,7 +28,6 @@ Get the `Command` sender using the `use_cmd_sender` hook and call the `send_cmd`
 ```rust
 #![allow(non_snake_case)]
 
-use bevy_dioxus::ecs_apc::EcsApcSender;
 use bevy_dioxus::prelude::*;
 
 fn main() {
@@ -56,8 +55,11 @@ fn setup(mut commands: Commands) {
 }
 
 pub fn Root(cx: Scope) -> Element {
+    // let entity_infos = world_call(cx, |world| {
+    // });
     render! {
         WorldView{
+
         }
     }
 }
@@ -94,19 +96,19 @@ fn WorldView(cx: Scope) -> Element {
     render! {
         view{
             name: "world-view",
-            class: "min-w-60 p-4 flex-col flex-grow-1 items-stretch gap-2",
+            class: "min-w-60 bg-gray-300 p-4 flex-col flex-grow-1 items-stretch gap-2",
             view {
                 name: "world-view-toolbar",
                 class: "flex-row gap-2",
                 view {
                     name: "refresh-btn",
-                    class: "p-2 hover:bg-gray-100 active:bg-blue-200",
+                    class: "p-2 bg-gray-200 hover:bg-gray-100 active:bg-blue-200",
                     onclick: handle_refresh_click,
                     "refresh"
                 }
                 view {
                     name: "spawn-btn",
-                    class: "p-2 hover:bg-gray-100 active:bg-blue-200",
+                    class: "p-2 bg-gray-200 hover:bg-gray-100 active:bg-blue-200",
                     onclick: handle_spawn_click,
                     "spawn"
                 }
@@ -184,7 +186,7 @@ fn EntityItem(cx: Scope, data: EntityInfo, level: u8) -> Element {
     render! {
         view {
             name: "entity-item",
-            class: "p-1 hover:bg-gray-100 items-center",
+            class: "p-1 bg-gray-200 hover:bg-gray-100 items-center",
             for _ in (0..*level) {
                 view {
                     name: "entity-item-indicator",
@@ -194,7 +196,7 @@ fn EntityItem(cx: Scope, data: EntityInfo, level: u8) -> Element {
             }
             view {
                 name: "entity-item-expand-btn",
-                class: "w-5 h-5 items-center justify-center bg-transparent hover:bg-gray-200",
+                class: "w-5 h-5 items-center justify-center hover:bg-gray-200",
                 visibility: if data.has_child { "visible" } else { "hidden" },
                 rotation: if **is_expand { 90 } else { 0 },
                 onclick: handle_expand_click,
@@ -202,7 +204,7 @@ fn EntityItem(cx: Scope, data: EntityInfo, level: u8) -> Element {
             }
             view {
                 name: "entity-item-icon",
-                class: "w-5 h-5 items-center justify-center bg-transparent hover:bg-gray-200",
+                class: "w-5 h-5 items-center justify-center hover:bg-gray-200",
                 "E"
             }
             "{data.name} {data.id:?}"
