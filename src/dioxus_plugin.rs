@@ -1,25 +1,25 @@
 use std::mem;
 use std::ops::DerefMut;
-use std::sync::{Arc, Mutex};
 use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, Mutex};
 
 use bevy::ecs::system::{Command, CommandQueue, SystemBuffer, SystemMeta};
 use bevy::prelude::*;
 use bevy::ui::widget::TextFlags;
 use bevy_cosmic_edit::{CosmicEditPlugin, CosmicText, Focus, ReadOnly};
-use bevy_mod_picking::DefaultPickingPlugins;
 use bevy_mod_picking::prelude::PickingInteraction;
+use bevy_mod_picking::DefaultPickingPlugins;
 use dioxus::core::ElementId;
 use dioxus::prelude::*;
 
-use crate::{SetAttrValueContext, TextSections, Texture};
 use crate::apc::{self};
 use crate::ecs_apc::{EcsApcReceiver, EcsApcSender};
 use crate::entity_extra_data::EntitiesExtraData;
 use crate::prelude::{Click, ListenerInput, On, Pointer};
 use crate::tailwind::{handle_interaction_classes, InteractionClass};
 use crate::vdm_data::{TemplateData, VDomData};
-use crate::vdom_main::{EcsMsg, vdom_main};
+use crate::vdom_main::{vdom_main, EcsMsg};
+use crate::{SetAttrValueContext, TextSections, Texture};
 
 #[derive(Component)]
 pub struct NodeTemplate;
@@ -124,6 +124,9 @@ impl Plugin for DioxusPlugin {
             .register_type::<InteractionClass>()
             .register_type::<TextSections>()
             .register_type::<Texture>()
+            .register_type::<crate::schemas::view>()
+            .register_type::<crate::schemas::input>()
+            .register_type::<crate::schemas::text>()
             .insert_resource({
                 let mut world = World::default();
                 world.insert_resource(TemplateData::default());
@@ -208,11 +211,13 @@ pub struct HandleInteractionClassesCommand(Vec<Entity>);
 
 impl Command for HandleInteractionClassesCommand {
     fn apply(self, world: &mut World) {
+        let type_registry = world.resource::<AppTypeRegistry>().clone();
         world.resource_scope(|world, mut entities_extra_data: Mut<EntitiesExtraData>| {
             for entity in self.0.into_iter() {
                 handle_interaction_classes(&mut SetAttrValueContext {
                     entity_ref: &mut world.entity_mut(entity),
                     entities_extra_data: entities_extra_data.deref_mut(),
+                    type_registry: type_registry.clone(),
                 });
             }
         });

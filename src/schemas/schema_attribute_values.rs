@@ -17,6 +17,7 @@ use crate::{
 pub struct SetAttrValueContext<'w, 'e> {
     pub entities_extra_data: &'e mut EntitiesExtraData,
     pub entity_ref: &'w mut EntityMut<'w>,
+    pub type_registry: AppTypeRegistry,
 }
 
 impl<'w, 'e> SetAttrValueContext<'w, 'e> {
@@ -32,10 +33,6 @@ impl<'w, 'e> SetAttrValueContext<'w, 'e> {
     ) {
         self.entity_ref
             .world_scope(|world| f(&mut world.entity_mut(entity)));
-    }
-    pub fn type_registry(&mut self) -> AppTypeRegistry {
-        let type_registry = self.entity_ref.world().resource::<AppTypeRegistry>();
-        type_registry.clone()
     }
 
     pub fn schema_type(&mut self) -> &'static dyn SchemaTypeUnTyped {
@@ -55,8 +52,7 @@ impl<'w, 'e> SetAttrValueContext<'w, 'e> {
             .get(&entity)
             .map(|n| n.schema_name)?;
         let schema_type = get_schema_type(schema_name);
-        let type_registry = self.type_registry();
-        let type_registry = type_registry.read();
+        let type_registry = self.type_registry.read();
         type_registry
             .get_type_data::<ReflectTextSchemaType>(schema_type.type_id())
             .and_then(|n| n.get(schema_type.as_reflect()))

@@ -23,7 +23,7 @@ mod smallbox;
 pub mod tailwind;
 pub mod vdm_data;
 pub mod vdom_main;
-pub mod widgets;
+pub mod components;
 
 pub mod prelude {
     pub use bevy::prelude::*;

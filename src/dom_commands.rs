@@ -4,26 +4,27 @@ use bevy::core::Name;
 use bevy::ecs::system::Command;
 use bevy::hierarchy::BuildWorldChildren;
 use bevy::prelude::{
-    Color, default, DespawnRecursiveExt, Entity, error, Mut, NodeBundle, Reflect,
+    default, error, AppTypeRegistry, Color, DespawnRecursiveExt, Entity, Mut, NodeBundle, Reflect,
     SpatialBundle, Text, TextBundle, TextSection, TextStyle, Visibility, World,
 };
 use dioxus::core::ElementId;
 
-use crate::{
-    ecs_fns, get_schema_type, NodeTemplate, schemas,
-    SchemaTypeBase, SetAttrValueContext, TemplateWorld,
-};
 use crate::dom_template::{DomTemplate, DomTemplateAttribute, DomTemplateNode};
 use crate::ecs_fns::{insert_after, insert_before, WorldExtension};
 use crate::entity_extra_data::{EntitiesExtraData, EntityExtraData};
 use crate::prelude::warn;
 use crate::schema_events::events::{listen_dom_event_by_name, unlisten_dom_event_by_name};
 use crate::vdm_data::{TemplateData, VDomData};
+use crate::{
+    ecs_fns, get_schema_type, schemas, NodeTemplate, SchemaTypeBase, SetAttrValueContext,
+    TemplateWorld,
+};
 
 pub fn create_template_node(
     template_world: &mut World,
     entities_extra_data: &mut EntitiesExtraData,
     template_node: DomTemplateNode,
+    type_registry: AppTypeRegistry,
 ) -> Entity {
     match template_node {
         DomTemplateNode::Element {
@@ -36,7 +37,12 @@ pub fn create_template_node(
                 let mut entities = vec![];
                 entities.reserve(children.len());
                 for n in children.into_iter() {
-                    entities.push(create_template_node(template_world, entities_extra_data, n));
+                    entities.push(create_template_node(
+                        template_world,
+                        entities_extra_data,
+                        n,
+                        type_registry.clone(),
+                    ));
                 }
                 entities
             };
@@ -67,6 +73,7 @@ pub fn create_template_node(
             let mut context = SetAttrValueContext {
                 entity_ref: &mut entity_ref,
                 entities_extra_data,
+                type_registry,
             };
             for (name, value) in static_attrs.into_iter() {
                 let Some(attr) = schema_type.prop(&name) else {
@@ -129,6 +136,7 @@ pub struct CreateTemplates {
 
 impl Command for CreateTemplates {
     fn apply(self, world: &mut World) {
+        let type_registry = world.resource::<AppTypeRegistry>().clone();
         let mut template_world = world.resource_mut::<TemplateWorld>();
         template_world.resource_scope(
             |template_world, mut entities_extra_data: Mut<EntitiesExtraData>| {
@@ -141,6 +149,7 @@ impl Command for CreateTemplates {
                                     template_world,
                                     entities_extra_data.as_mut(),
                                     n,
+                                    type_registry.clone()
                                 ));
                             }
 
@@ -177,13 +186,23 @@ impl Command for LoadTemplate {
         world.resource_scope(|world, mut template_world: Mut<TemplateWorld>| {
             template_world.resource_scope(|template_world, template_data: Mut<TemplateData>| {
                 let template_entity = template_data.template_name_to_entities[&self.name];
-                let root_entity = template_world.get_child_by_index(template_entity, self.root_index);
-                let loaded_entity =
-                    template_world.resource_scope(|template_world, mut template_entities_extra_data: Mut<EntitiesExtraData>| {
-                        world.resource_scope(|world, mut entities_extra_data: Mut<EntitiesExtraData>| {
-                            ecs_fns::clone_entity_nest(world, entities_extra_data.as_mut(), template_world, template_entities_extra_data.as_mut(), root_entity)
-                        })
-                    });
+                let root_entity =
+                    template_world.get_child_by_index(template_entity, self.root_index);
+                let loaded_entity = template_world.resource_scope(
+                    |template_world, mut template_entities_extra_data: Mut<EntitiesExtraData>| {
+                        world.resource_scope(
+                            |world, mut entities_extra_data: Mut<EntitiesExtraData>| {
+                                ecs_fns::clone_entity_nest(
+                                    world,
+                                    entities_extra_data.as_mut(),
+                                    template_world,
+                                    template_entities_extra_data.as_mut(),
+                                    root_entity,
+                                )
+                            },
+                        )
+                    },
+                );
                 world.resource_scope(|_world, mut vdom_data: Mut<VDomData>| {
                     vdom_data.loaded_node_stack.push(loaded_entity);
                     vdom_data
@@ -429,7 +448,7 @@ impl Command for CreateTextNode {
                     },
                 ),
                 ..default()
-            }, ));
+            },));
             let text_entity = text_entity_ref.id();
             vdom_data.element_id_to_entity.insert(self.id, text_entity);
             vdom_data.loaded_node_stack.push(text_entity);
@@ -482,6 +501,7 @@ pub struct SetAttribute {
 impl Command for SetAttribute {
     fn apply(self, world: &mut World) {
         let vdom_data = world.resource::<VDomData>();
+        let type_registry = world.resource::<AppTypeRegistry>().clone();
         let entity = vdom_data.element_id_to_entity[&self.id];
         world.resource_scope(|world, mut entities_extra_data: Mut<EntitiesExtraData>| {
             let Some(entity_extra_data) = entities_extra_data.get_mut(&entity) else {
@@ -501,6 +521,7 @@ impl Command for SetAttribute {
                 &mut SetAttrValueContext {
                     entity_ref: &mut entity_ref,
                     entities_extra_data: entities_extra_data.deref_mut(),
+                    type_registry
                 },
                 self.value,
             );
