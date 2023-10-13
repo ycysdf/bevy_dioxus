@@ -1,6 +1,8 @@
+#![allow(non_snake_case)]
+
 use std::rc::Rc;
 
-#[allow(non_snake_case)]
+
 use crate::{components::use_controlled_state, prelude::*};
 
 #[derive(Clone)]
@@ -19,7 +21,7 @@ pub struct SelectableListProps<'a, T: Default + 'static> {
     children: Element<'a>,
 }
 
-pub fn SelectableList<'a, T: PartialEq + Clone + Default + std::fmt::Debug + 'static>(
+pub fn SelectableList<'a, T: PartialEq + Clone + Default + 'static>(
     cx: Scope<'a, SelectableListProps<'a, T>>,
 ) -> Element<'a> {
     let value = &cx.props.value;
@@ -55,7 +57,7 @@ pub struct SelectableItemProps<'a, T: PartialEq + Clone + Default + 'static> {
     children: Element<'a>,
 }
 
-pub fn SelectableItem<'a, T: PartialEq + Clone + Default + std::fmt::Debug + 'static>(
+pub fn SelectableItem<'a, T: PartialEq + Clone + Default + 'static>(
     cx: Scope<'a, SelectableItemProps<'a, T>>,
 ) -> Element<'a> {
     let context_state = use_shared_state::<SelectableListContext<T>>(cx).unwrap();
