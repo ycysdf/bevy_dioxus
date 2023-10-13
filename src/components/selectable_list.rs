@@ -5,8 +5,7 @@ use crate::{components::use_controlled_state, prelude::*};
 
 #[derive(Clone)]
 pub struct SelectableListContext<T: PartialEq + Clone + Default + 'static> {
-    pub selected: T,
-    pub setter: Rc<dyn Fn(T)>,
+    pub selected: UseState<T>
 }
 
 #[derive(Props)]
@@ -37,9 +36,8 @@ pub fn SelectableList<'a, T: PartialEq + Clone + Default + std::fmt::Debug + 'st
             }
         },
     );
-    cx.provide_context(SelectableListContext::<T> {
-        selected: selected.get().to_owned(),
-        setter: selected.setter(),
+    use_shared_state_provider(cx, || SelectableListContext::<T> {
+        selected: selected.clone()
     });
     render! {
        view {
@@ -57,14 +55,16 @@ pub struct SelectableItemProps<'a, T: PartialEq + Clone + Default + 'static> {
     children: Element<'a>,
 }
 
-pub fn SelectableItem<'a, T: PartialEq + Clone + Default + 'static>(
+pub fn SelectableItem<'a, T: PartialEq + Clone + Default + std::fmt::Debug + 'static>(
     cx: Scope<'a, SelectableItemProps<'a, T>>,
 ) -> Element<'a> {
-    let update = cx.schedule_update();
-    let parent_context = cx.consume_context::<SelectableListContext<T>>().unwrap();
-    let is_selected = parent_context.selected == cx.props.value;
+    let context_state = use_shared_state::<SelectableListContext<T>>(cx).unwrap();
+    let is_selected = {
+        let context = context_state.read();
+        &*context.selected.current() == &cx.props.value
+    };
     let handle_click = {
-        to_owned!(parent_context.setter);
+        to_owned!(context_state);
         to_owned!(cx.props.value);
         to_owned!(cx.props.readonly);
         let onselected = &cx.props.onselected;
@@ -72,11 +72,14 @@ pub fn SelectableItem<'a, T: PartialEq + Clone + Default + 'static>(
             if readonly {
                 return;
             }
-            (setter)(value.clone());
-            (update)();
+            {
+                let context_state = context_state.read();
+                context_state.selected.set(value.clone());
+            }
             if let Some(onselected) = onselected {
                 onselected.call(());
             }
+            context_state.notify_consumers();
         }
     };
     let selected_class = if is_selected {
