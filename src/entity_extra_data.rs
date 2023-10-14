@@ -5,15 +5,23 @@ use bevy::utils::{default, HashMap};
 use smallvec::SmallVec;
 
 use crate::element_core::AttrValue;
-use crate::SmallBox;
 use crate::smallbox::S1;
 use crate::tailwind::TailwindClassItem;
+use crate::SmallBox;
+
+pub type AttrSetBits = u64;
+pub type AttrIndex = u8;
+
+pub fn get_all_prop_indecs() -> impl Iterator<Item = AttrIndex> {
+    let bit_count = (std::mem::size_of::<AttrSetBits>() * 8) as AttrIndex;
+    0..bit_count
+}
 
 #[derive(Clone)]
 pub struct EntityExtraData {
     pub schema_name: &'static str,
-    pub attr_is_set: u64,
-    pub class_attr_is_set: u64,
+    pub attr_is_set: AttrSetBits,
+    pub class_attr_is_set: AttrSetBits,
     class_attr_set_count: u8,
     pub interaction_classes: SmallVec<[TailwindClassItem; 8]>,
     pub normal_props_map: HashMap<u8, SmallBox<dyn AttrValue, S1>>,
@@ -30,7 +38,7 @@ impl EntityExtraData {
             normal_props_map: default(),
         }
     }
-    pub fn set_attr(&mut self, attr_index: u8, is_set: bool) {
+    pub fn set_attr(&mut self, attr_index: AttrIndex, is_set: bool) {
         if attr_index == 0 {
             return;
         }
@@ -41,11 +49,11 @@ impl EntityExtraData {
         }
     }
 
-    pub fn is_set_attr(&self, attr_index: u8) -> bool {
+    pub fn is_set_attr(&self, attr_index: AttrIndex) -> bool {
         self.attr_is_set & (!(1 << attr_index)) != self.attr_is_set
     }
 
-    pub fn set_class_attr(&mut self, attr_index: u8, is_set: bool) {
+    pub fn set_class_attr(&mut self, attr_index: AttrIndex, is_set: bool) {
         if is_set == self.is_set_class_attr(attr_index) {
             return;
         }
@@ -58,19 +66,19 @@ impl EntityExtraData {
         }
     }
 
-    pub fn is_set_class_attr(&self, attr_index: u8) -> bool {
+    pub fn is_set_class_attr(&self, attr_index: AttrIndex) -> bool {
         self.class_attr_is_set & (!(1 << attr_index)) != self.class_attr_is_set
     }
 
-    pub fn iter_set_class_attr_indices(&self) -> impl Iterator<Item=u8> + 'static {
+    pub fn iter_set_class_attr_indices(&self) -> impl Iterator<Item = AttrIndex> + 'static {
         let num = self.class_attr_is_set;
-        (0..64)
+        get_all_prop_indecs()
             .filter(move |i| (num >> i) & 1 == 1)
             .take(self.class_attr_set_count as usize)
     }
-    pub fn iter_class_attr_indices_exclude(&self, bits: u64) -> impl Iterator<Item=u8> + 'static {
+    pub fn iter_class_attr_indices_exclude(&self, bits: AttrSetBits) -> impl Iterator<Item = AttrIndex> + 'static {
         let num = self.class_attr_is_set & !bits;
-        (0..64).filter(move |i| (num >> i) & 1 == 1)
+        get_all_prop_indecs().filter(move |i| (num >> i) & 1 == 1)
     }
 }
 

@@ -9,6 +9,7 @@ use smallvec::{smallvec, SmallVec};
 
 pub use colors::*;
 
+use crate::entity_extra_data::get_all_prop_indecs;
 use crate::{ElementAttrUntyped, ElementTypeUnTyped, element_attrs, SetAttrValueContext};
 use crate::{smallbox, SmallBox};
 use crate::{OptionalOverflow, Texture, try_get_element_type, UiOptionalRect};
@@ -152,7 +153,7 @@ pub fn handle_interaction_classes(context: &mut SetAttrValueContext) {
         try_get_element_type(context.entity_extra_data().schema_name).unwrap();
 
     let num = unset_bits & (!set_bits) & (!context.entity_extra_data().attr_is_set);
-    for prop_index in (0..64).filter(move |i| (num >> i) & 1 == 1) {
+    for prop_index in get_all_prop_indecs().filter(move |i| (num >> i) & 1 == 1) {
         let prop = schema_type.prop_by_index(prop_index);
         if let Some(value) = context
             .entity_extra_data()
