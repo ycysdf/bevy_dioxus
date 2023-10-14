@@ -1,14 +1,23 @@
 #![allow(non_upper_case_globals)]
 #![allow(non_camel_case_types)]
 
-use crate::schema_props::COMMON_PROPS_COUNT;
-use crate::{impl_schema_type_base, ReflectTextSchemaType, SchemaType, SetAttrValueContext};
-use crate::{prelude::*, TextSchemaType};
+use std::any::TypeId;
+
 use bevy::ecs::component::ComponentInfo;
 use bevy::ecs::world::EntityMut;
 use bevy::reflect::Reflect;
 use bevy_cosmic_edit::*;
-use std::any::TypeId;
+
+use input_attrs::*;
+
+use crate::{
+    ElementType,
+    impl_element_type_base,
+    ReflectTextStyledElementType,
+    SetAttrValueContext,
+    prelude::*,
+    TextStyledElementType
+};
 
 pub fn bevy_color_to_cosmic(color: Color) -> CosmicColor {
     cosmic_text::Color::rgba(
@@ -18,16 +27,15 @@ pub fn bevy_color_to_cosmic(color: Color) -> CosmicColor {
         (color.a() * 255.) as u8,
     )
 }
-use input_props::*;
 
-impl_schema_type_base!(
+impl_element_type_base!(
     #[derive(Reflect, Debug, Clone, Copy)]
-    #[reflect(TextSchemaType)]
+    #[reflect(TextStyledElementType)]
     input,
     text_value
 );
 
-impl SchemaType for input {
+impl ElementType for input {
     fn spawn<'w>(&self, world: &'w mut World) -> EntityMut<'w> {
         let attrs = AttrsOwned::new(Attrs::new().color(bevy_color_to_cosmic(Color::BLACK)));
         let _placeholder_attrs = AttrsOwned::new(
@@ -53,7 +61,7 @@ impl SchemaType for input {
             text_setter: CosmicText::OneStyle(String::from("")),
             mode: CosmicMode::InfiniteLine,
             ..default()
-        },))
+        }, ))
     }
 
     fn try_insert_no_reflect_components(
@@ -105,13 +113,13 @@ impl SchemaType for input {
     }
 }
 
-impl TextSchemaType for input {
+impl TextStyledElementType for input {
     fn set_font(
         &self,
         entity_ref: &mut EntityMut,
-        v: <crate::schema_props::font as SchemaProp>::Value,
+        _v: <crate::element_attrs::font as ElementAttr>::Value,
     ) {
-        let Some(mut attrs) = entity_ref.get_mut::<CosmicAttrs>() else {
+        let Some(_attrs) = entity_ref.get_mut::<CosmicAttrs>() else {
             return;
         };
         // todo: CosmicText font set
@@ -121,7 +129,7 @@ impl TextSchemaType for input {
     fn set_font_size(
         &self,
         entity_ref: &mut EntityMut,
-        v: <crate::schema_props::font_size as SchemaProp>::Value,
+        v: <crate::element_attrs::font_size as ElementAttr>::Value,
     ) {
         let Some(mut metrics) = entity_ref.get_mut::<CosmicMetrics>() else {
             return;
@@ -132,7 +140,7 @@ impl TextSchemaType for input {
     fn set_text_color(
         &self,
         entity_ref: &mut EntityMut,
-        v: <crate::schema_props::text_color as SchemaProp>::Value,
+        v: <crate::element_attrs::text_color as ElementAttr>::Value,
     ) {
         let Some(mut attrs) = entity_ref.get_mut::<CosmicAttrs>() else {
             return;
@@ -142,8 +150,8 @@ impl TextSchemaType for input {
 
     fn set_text_linebreak(
         &self,
-        entity_ref: &mut EntityMut,
-        v: <crate::schema_props::text_linebreak as SchemaProp>::Value,
+        _entity_ref: &mut EntityMut,
+        _v: <crate::element_attrs::text_linebreak as ElementAttr>::Value,
     ) {
         // todo: CosmicText text_linebreak
     }
@@ -151,7 +159,7 @@ impl TextSchemaType for input {
     fn set_text_align(
         &self,
         entity_ref: &mut EntityMut,
-        v: <crate::schema_props::text_align as SchemaProp>::Value,
+        v: <crate::element_attrs::text_align as ElementAttr>::Value,
     ) {
         let Some(mut pos) = entity_ref.get_mut::<CosmicTextPosition>() else {
             return;
@@ -174,12 +182,14 @@ impl TextSchemaType for input {
     }
 }
 
-pub mod input_props {
+pub mod input_attrs {
+    use crate::COMMON_PROPS_COUNT;
+
     use super::*;
 
     pub struct text_value;
 
-    impl SchemaProp for text_value {
+    impl ElementAttr for text_value {
         type Value = String;
 
         const TAG_NAME: &'static str = stringify!(value);

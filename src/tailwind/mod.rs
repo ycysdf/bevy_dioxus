@@ -9,17 +9,18 @@ use smallvec::{smallvec, SmallVec};
 
 pub use colors::*;
 
-use crate::prelude::{warn, TextAlignment};
-use crate::smallbox::S1;
-use crate::{schema_props, SchemaPropUntyped, SchemaTypeUnTyped, SetAttrValueContext};
+use crate::{ElementAttrUntyped, ElementTypeUnTyped, element_attrs, SetAttrValueContext};
 use crate::{smallbox, SmallBox};
-use crate::{try_get_schema_type, OptionalOverflow, PropValue, Texture, UiOptionalRect};
+use crate::{OptionalOverflow, Texture, try_get_element_type, UiOptionalRect};
+use crate::element_core::AttrValue;
+use crate::prelude::{TextAlignment, warn};
+use crate::smallbox::S1;
 
 mod colors;
 
 #[derive(Default)]
 pub struct TailwindClassItem(
-    pub SmallVec<[(&'static dyn SchemaPropUntyped, SmallBox<dyn PropValue, S1>); 4]>,
+    pub SmallVec<[(&'static dyn ElementAttrUntyped, SmallBox<dyn AttrValue, S1>); 4]>,
     pub Interaction,
 );
 
@@ -107,8 +108,8 @@ pub fn handle_classes(context: &mut SetAttrValueContext, classes: &str) {
         context.entity_ref.remove::<InteractionClass>();
     }
     let entity_extra_data = context.entity_extra_data();
-    let schema_type: &dyn SchemaTypeUnTyped =
-        try_get_schema_type(entity_extra_data.schema_name).unwrap();
+    let schema_type: &dyn ElementTypeUnTyped =
+        try_get_element_type(entity_extra_data.schema_name).unwrap();
 
     entity_extra_data.interaction_classes = interaction_classes;
     entity_extra_data.normal_props_map = normal_props_map;
@@ -147,8 +148,8 @@ pub fn handle_interaction_classes(context: &mut SetAttrValueContext) {
             }
         }
     }
-    let schema_type: &dyn SchemaTypeUnTyped =
-        try_get_schema_type(context.entity_extra_data().schema_name).unwrap();
+    let schema_type: &dyn ElementTypeUnTyped =
+        try_get_element_type(context.entity_extra_data().schema_name).unwrap();
 
     let num = unset_bits & (!set_bits) & (!context.entity_extra_data().attr_is_set);
     for prop_index in (0..64).filter(move |i| (num >> i) & 1 == 1) {
@@ -191,40 +192,40 @@ pub fn parse_size_val(text: &str) -> Val {
 
 fn parse_class_inner<'a>(
     class: &'a str,
-) -> SmallVec<[(&'static dyn SchemaPropUntyped, SmallBox<dyn PropValue, S1>); 4]> {
+) -> SmallVec<[(&'static dyn ElementAttrUntyped, SmallBox<dyn AttrValue, S1>); 4]> {
     match class {
         "visible" => smallvec![(
-            &schema_props::visibility as _,
+            &element_attrs::visibility as _,
             smallbox!(Visibility::Visible)
         ),],
         "invisible" => smallvec![(
-            &schema_props::visibility as _,
+            &element_attrs::visibility as _,
             smallbox!(Visibility::Hidden)
         ),],
         "flex-col" => smallvec![
-            (&schema_props::display as _, smallbox!(Display::Flex)),
+            (&element_attrs::display as _, smallbox!(Display::Flex)),
             (
-                &schema_props::flex_direction as _,
+                &element_attrs::flex_direction as _,
                 smallbox!(FlexDirection::Column)
             )
         ],
         "flex-row" => smallvec![
-            (&schema_props::display as _, smallbox!(Display::Flex)),
+            (&element_attrs::display as _, smallbox!(Display::Flex)),
             (
-                &schema_props::flex_direction as _,
+                &element_attrs::flex_direction as _,
                 smallbox!(FlexDirection::Row)
             )
         ],
-        "grid" => smallvec![(&schema_props::display as _, smallbox!(Display::Grid)),],
-        "shrink" => smallvec![(&schema_props::flex_shrink as _, smallbox!(1.0)),],
-        "shrink-0" => smallvec![(&schema_props::flex_shrink as _, smallbox!(0.0)),],
-        "grow" => smallvec![(&schema_props::flex_grow as _, smallbox!(1.0)),],
-        "grow-0" => smallvec![(&schema_props::flex_grow as _, smallbox!(0.0)),],
+        "grid" => smallvec![(&element_attrs::display as _, smallbox!(Display::Grid)),],
+        "shrink" => smallvec![(&element_attrs::flex_shrink as _, smallbox!(1.0)),],
+        "shrink-0" => smallvec![(&element_attrs::flex_shrink as _, smallbox!(0.0)),],
+        "grow" => smallvec![(&element_attrs::flex_grow as _, smallbox!(1.0)),],
+        "grow-0" => smallvec![(&element_attrs::flex_grow as _, smallbox!(0.0)),],
         class => {
             if let Some(index) = class.strip_prefix("z-") {
                 if let Ok(index) = index.parse() {
                     smallvec![(
-                        &schema_props::z_index as _,
+                        &element_attrs::z_index as _,
                         smallbox!(ZIndex::Global(index))
                     ),]
                 } else {
@@ -232,7 +233,7 @@ fn parse_class_inner<'a>(
                 }
             } else if let Some(class) = class.strip_prefix("justify-") {
                 smallvec![(
-                    &schema_props::justify_content as _,
+                    &element_attrs::justify_content as _,
                     smallbox!(match class {
                         "start" => JustifyContent::Start,
                         "end" => JustifyContent::End,
@@ -247,7 +248,7 @@ fn parse_class_inner<'a>(
                 ),]
             } else if let Some(class) = class.strip_prefix("items-") {
                 smallvec![(
-                    &schema_props::align_items as _,
+                    &element_attrs::align_items as _,
                     smallbox!(match class {
                         "start" => AlignItems::FlexStart,
                         "end" => AlignItems::FlexEnd,
@@ -262,35 +263,35 @@ fn parse_class_inner<'a>(
             } else if let Some(class) = class.strip_prefix("gap-") {
                 let gap = parse_size_val(class);
                 smallvec![
-                    (&schema_props::column_gap as _, smallbox!(gap)),
-                    (&schema_props::row_gap as _, smallbox!(gap)),
+                    (&element_attrs::column_gap as _, smallbox!(gap)),
+                    (&element_attrs::row_gap as _, smallbox!(gap)),
                 ]
             } else if let Some(class) = class.strip_prefix("gap-x-") {
                 let gap = parse_size_val(class);
-                smallvec![(&schema_props::row_gap as _, smallbox!(gap)),]
+                smallvec![(&element_attrs::row_gap as _, smallbox!(gap)),]
             } else if let Some(class) = class.strip_prefix("gap-y-") {
                 let gap = parse_size_val(class);
-                smallvec![(&schema_props::column_gap as _, smallbox!(gap)),]
+                smallvec![(&element_attrs::column_gap as _, smallbox!(gap)),]
             } else if class == "relative" {
                 smallvec![(
-                    &schema_props::position_type as _,
+                    &element_attrs::position_type as _,
                     smallbox!(PositionType::Relative)
                 ),]
             } else if class == "absolute" {
                 smallvec![(
-                    &schema_props::position_type as _,
+                    &element_attrs::position_type as _,
                     smallbox!(PositionType::Absolute)
                 ),]
             } else if class == "hidden" {
-                smallvec![(&schema_props::display as _, smallbox!(Display::None)),]
+                smallvec![(&element_attrs::display as _, smallbox!(Display::None)),]
             } else if let Some(class) = class.strip_prefix("left-") {
-                smallvec![(&schema_props::left as _, smallbox!(parse_size_val(class))),]
+                smallvec![(&element_attrs::left as _, smallbox!(parse_size_val(class))),]
             } else if let Some(class) = class.strip_prefix("right-") {
-                smallvec![(&schema_props::right as _, smallbox!(parse_size_val(class))),]
+                smallvec![(&element_attrs::right as _, smallbox!(parse_size_val(class))),]
             } else if let Some(class) = class.strip_prefix("top-") {
-                smallvec![(&schema_props::top as _, smallbox!(parse_size_val(class))),]
+                smallvec![(&element_attrs::top as _, smallbox!(parse_size_val(class))),]
             } else if let Some(class) = class.strip_prefix("bottom-") {
-                smallvec![(&schema_props::bottom as _, smallbox!(parse_size_val(class))),]
+                smallvec![(&element_attrs::bottom as _, smallbox!(parse_size_val(class))),]
             } else if let Some(class) = class.strip_prefix("flex-") {
                 if let Some(val) = (match class {
                     "wrap" => Some(FlexWrap::Wrap),
@@ -298,38 +299,38 @@ fn parse_class_inner<'a>(
                     "nowrap" => Some(FlexWrap::NoWrap),
                     _ => None,
                 }) {
-                    smallvec![(&schema_props::flex_wrap as _, smallbox!(val))]
+                    smallvec![(&element_attrs::flex_wrap as _, smallbox!(val))]
                 } else {
                     default()
                 }
             } else if let Some(class) = class.strip_prefix("w-") {
-                smallvec![(&schema_props::width as _, smallbox!(parse_size_val(class))),]
+                smallvec![(&element_attrs::width as _, smallbox!(parse_size_val(class))),]
             } else if let Some(class) = class.strip_prefix("h-") {
-                smallvec![(&schema_props::height as _, smallbox!(parse_size_val(class))),]
+                smallvec![(&element_attrs::height as _, smallbox!(parse_size_val(class))),]
             } else if let Some(class) = class.strip_prefix("min-w-") {
                 smallvec![(
-                    &schema_props::min_width as _,
+                    &element_attrs::min_width as _,
                     smallbox!(parse_size_val(class))
                 ),]
             } else if let Some(class) = class.strip_prefix("min-h-") {
                 smallvec![(
-                    &schema_props::min_height as _,
+                    &element_attrs::min_height as _,
                     smallbox!(parse_size_val(class))
                 ),]
             } else if let Some(class) = class.strip_prefix("max-w-") {
                 smallvec![(
-                    &schema_props::min_width as _,
+                    &element_attrs::min_width as _,
                     smallbox!(parse_size_val(class))
                 ),]
             } else if let Some(class) = class.strip_prefix("max-h-") {
                 smallvec![(
-                    &schema_props::max_height as _,
+                    &element_attrs::max_height as _,
                     smallbox!(parse_size_val(class))
                 ),]
             } else if let Some(class) = class.strip_prefix("bg-") {
                 if let Some(color) = parse_color(class) {
                     smallvec![(
-                        &schema_props::background as _,
+                        &element_attrs::background as _,
                         smallbox!(Texture::Color(color))
                     ),]
                 } else {
@@ -338,26 +339,26 @@ fn parse_class_inner<'a>(
             } else if let Some(class) = class.strip_prefix("text-") {
                 match class {
                     "nowrap" => smallvec![(
-                        &schema_props::text_linebreak as _,
+                        &element_attrs::text_linebreak as _,
                         smallbox!(BreakLineOn::NoWrap)
                     ),],
                     "left" => smallvec![(
-                        &schema_props::text_align as _,
+                        &element_attrs::text_align as _,
                         smallbox!(TextAlignment::Left)
                     ),],
                     "center" => smallvec![(
-                        &schema_props::text_align as _,
+                        &element_attrs::text_align as _,
                         smallbox!(TextAlignment::Center)
                     ),],
                     "right" => smallvec![(
-                        &schema_props::text_align as _,
+                        &element_attrs::text_align as _,
                         smallbox!(TextAlignment::Right)
                     ),],
                     _ => {
                         if let Some(color) = parse_color(class) {
-                            smallvec![(&schema_props::text_color as _, smallbox!(color)),]
+                            smallvec![(&element_attrs::text_color as _, smallbox!(color)),]
                         } else if let Ok(size) = class.parse::<f32>() {
-                            smallvec![(&schema_props::font_size as _, smallbox!(size)),]
+                            smallvec![(&element_attrs::font_size as _, smallbox!(size)),]
                         } else {
                             default()
                         }
@@ -366,109 +367,109 @@ fn parse_class_inner<'a>(
             } else if let Some(class) = class.strip_prefix("p-") {
                 let padding = parse_size_val(class);
                 smallvec![(
-                    &schema_props::padding as _,
+                    &element_attrs::padding as _,
                     smallbox!(UiOptionalRect::all(padding))
                 ),]
             } else if let Some(class) = class.strip_prefix("py-") {
                 smallvec![(
-                    &schema_props::padding as _,
+                    &element_attrs::padding as _,
                     smallbox!(UiOptionalRect::vertical(parse_size_val(class)))
                 ),]
             } else if let Some(class) = class.strip_prefix("px-") {
                 smallvec![(
-                    &schema_props::padding as _,
+                    &element_attrs::padding as _,
                     smallbox!(UiOptionalRect::horizontal(parse_size_val(class)))
                 ),]
             } else if let Some(class) = class.strip_prefix("pt-") {
                 smallvec![(
-                    &schema_props::padding as _,
+                    &element_attrs::padding as _,
                     smallbox!(UiOptionalRect::top(parse_size_val(class)))
                 ),]
             } else if let Some(class) = class.strip_prefix("pb-") {
                 smallvec![(
-                    &schema_props::padding as _,
+                    &element_attrs::padding as _,
                     smallbox!(UiOptionalRect::bottom(parse_size_val(class)))
                 ),]
             } else if let Some(class) = class.strip_prefix("pl-") {
                 smallvec![(
-                    &schema_props::padding as _,
+                    &element_attrs::padding as _,
                     smallbox!(UiOptionalRect::left(parse_size_val(class)))
                 ),]
             } else if let Some(class) = class.strip_prefix("pr-") {
                 smallvec![(
-                    &schema_props::padding as _,
+                    &element_attrs::padding as _,
                     smallbox!(UiOptionalRect::right(parse_size_val(class)))
                 ),]
             } else if let Some(class) = class.strip_prefix("m-") {
                 smallvec![(
-                    &schema_props::margin as _,
+                    &element_attrs::margin as _,
                     smallbox!(UiOptionalRect::all(parse_size_val(class)))
                 ),]
             } else if let Some(class) = class.strip_prefix("my-") {
                 smallvec![(
-                    &schema_props::margin as _,
+                    &element_attrs::margin as _,
                     smallbox!(UiOptionalRect::vertical(parse_size_val(class)))
                 ),]
             } else if let Some(class) = class.strip_prefix("mx-") {
                 smallvec![(
-                    &schema_props::margin as _,
+                    &element_attrs::margin as _,
                     smallbox!(UiOptionalRect::horizontal(parse_size_val(class)))
                 ),]
             } else if let Some(class) = class.strip_prefix("mt-") {
                 smallvec![(
-                    &schema_props::margin as _,
+                    &element_attrs::margin as _,
                     smallbox!(UiOptionalRect::top(parse_size_val(class)))
                 ),]
             } else if let Some(class) = class.strip_prefix("mb-") {
                 smallvec![(
-                    &schema_props::margin as _,
+                    &element_attrs::margin as _,
                     smallbox!(UiOptionalRect::bottom(parse_size_val(class)))
                 ),]
             } else if let Some(class) = class.strip_prefix("ml-") {
                 smallvec![(
-                    &schema_props::margin as _,
+                    &element_attrs::margin as _,
                     smallbox!(UiOptionalRect::left(parse_size_val(class)))
                 ),]
             } else if let Some(class) = class.strip_prefix("mr-") {
                 smallvec![(
-                    &schema_props::margin as _,
+                    &element_attrs::margin as _,
                     smallbox!(UiOptionalRect::right(parse_size_val(class)))
                 ),]
             } else if let Some(class) = class.strip_prefix("border") {
                 if class == "" {
                     smallvec![(
-                        &schema_props::border as _,
+                        &element_attrs::border as _,
                         smallbox!(UiOptionalRect::all(Val::Px(1.0)))
                     ),]
                 } else if let Some(class) = class.strip_prefix("-") {
                     if let Some(color) = parse_color(class) {
                         smallvec![(
-                            &schema_props::border_color as _,
+                            &element_attrs::border_color as _,
                             smallbox!(BorderColor(color))
                         ),]
                     } else if let Ok(size) = class.parse::<f32>() {
                         smallvec![(
-                            &schema_props::border as _,
+                            &element_attrs::border as _,
                             smallbox!(UiOptionalRect::all(Val::Px(size as f32)))
                         ),]
                     } else if let Some(class) = class.strip_prefix("t") {
                         smallvec![(
-                            &schema_props::border as _,
+                            &element_attrs::border as _,
                             smallbox!(parse_border_size(class, UiOptionalRect::top))
                         ),]
                     } else if let Some(class) = class.strip_prefix("r") {
                         smallvec![(
-                            &schema_props::border as _,
+                            &element_attrs::border as _,
                             smallbox!(parse_border_size(class, UiOptionalRect::right))
                         ),]
                     } else if let Some(class) = class.strip_prefix("b") {
                         smallvec![(
-                            &schema_props::border as _,
+                            &element_attrs::border as _,
                             smallbox!(parse_border_size(class, UiOptionalRect::bottom))
                         ),]
                     } else if let Some(class) = class.strip_prefix("l") {
                         smallvec![(
-                            &schema_props::border as _,
+                            &element_attrs::border as _,
                             smallbox!(parse_border_size(class, UiOptionalRect::left))
                         ),]
                     } else {
@@ -479,7 +480,7 @@ fn parse_class_inner<'a>(
                 }
             } else if let Some(class) = class.strip_prefix("overflow-") {
                 smallvec![(
-                    &schema_props::border as _,
+                    &element_attrs::border as _,
                     smallbox!(match class {
                         "clip" => OptionalOverflow {
                             x: Some(OverflowAxis::Clip),
@@ -493,7 +494,7 @@ fn parse_class_inner<'a>(
                 ),]
             } else if let Some(class) = class.strip_prefix("overflow-x-") {
                 smallvec![(
-                    &schema_props::border as _,
+                    &element_attrs::border as _,
                     smallbox!(OptionalOverflow {
                         x: Some(match class {
                             "clip" => OverflowAxis::Clip,
@@ -504,7 +505,7 @@ fn parse_class_inner<'a>(
                 ),]
             } else if let Some(class) = class.strip_prefix("overflow-y-") {
                 smallvec![(
-                    &schema_props::border as _,
+                    &element_attrs::border as _,
                     smallbox!(OptionalOverflow {
                         y: Some(match class {
                             "clip" => OverflowAxis::Clip,

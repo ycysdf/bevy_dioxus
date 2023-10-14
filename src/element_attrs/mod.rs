@@ -1,21 +1,23 @@
 #![allow(non_camel_case_types)]
 
-use bevy::ecs::world::EntityMut;
 use bevy::prelude::*;
 use bevy::text::BreakLineOn;
 use bevy::ui;
 use bevy::ui::widget::UiImageSize;
 
+use crate::{
+    set_text_value,
+    SmallBox,
+};
 use crate::dom_commands::DomAttributeValue;
 use crate::ecs_fns::StyleEntityExt;
-use crate::schema_core::SchemaProp;
+use crate::element_core::{AttrValue, ElementAttr};
 use crate::smallbox::S1;
 use crate::tailwind::handle_classes;
-use crate::{
-    get_schema_type, schemas, PropValue, ReflectTextSchemaType, SchemaTypeBase, SmallBox,
-    TextSchemaType, set_text_value,
-};
-use crate::{OptionalOverflow, SetAttrValueContext, Texture, UiOptionalRect};
+
+
+pub use attr_values::*;
+mod attr_values;
 
 pub const COMMON_PROPS_COUNT: u8 = 45;
 
@@ -30,7 +32,7 @@ impl From<DomAttributeValue> for Option<String> {
     }
 }
 
-impl SchemaProp for class {
+impl ElementAttr for class {
     type Value = String;
 
     const TAG_NAME: &'static str = stringify!(class);
@@ -58,7 +60,7 @@ impl SchemaProp for class {
 
 pub struct name;
 
-impl SchemaProp for name {
+impl ElementAttr for name {
     type Value = String;
 
     const TAG_NAME: &'static str = stringify!(name);
@@ -83,7 +85,7 @@ impl SchemaProp for cursor {
 
 pub struct z_index;
 
-impl SchemaProp for z_index {
+impl ElementAttr for z_index {
     type Value = ZIndex;
 
     const TAG_NAME: &'static str = stringify!(z_index);
@@ -97,7 +99,7 @@ impl SchemaProp for z_index {
 
 pub struct background;
 
-impl SchemaProp for background {
+impl ElementAttr for background {
     type Value = Texture;
 
     const TAG_NAME: &'static str = stringify!(background);
@@ -158,7 +160,7 @@ impl SchemaProp for background {
 
 pub struct border;
 
-impl SchemaProp for border {
+impl ElementAttr for border {
     type Value = UiOptionalRect;
 
     const TAG_NAME: &'static str = stringify!(border);
@@ -180,7 +182,7 @@ impl SchemaProp for border {
 
 pub struct border_color;
 
-impl SchemaProp for border_color {
+impl ElementAttr for border_color {
     type Value = BorderColor;
 
     const TAG_NAME: &'static str = stringify!(border_color);
@@ -194,7 +196,7 @@ impl SchemaProp for border_color {
 
 pub struct display;
 
-impl SchemaProp for display {
+impl ElementAttr for display {
     type Value = ui::Display;
 
     const TAG_NAME: &'static str = stringify!(display);
@@ -210,7 +212,7 @@ impl SchemaProp for display {
 
 pub struct position_type;
 
-impl SchemaProp for position_type {
+impl ElementAttr for position_type {
     type Value = PositionType;
 
     const TAG_NAME: &'static str = stringify!(position_type);
@@ -225,7 +227,7 @@ impl SchemaProp for position_type {
 
 pub struct overflow;
 
-impl SchemaProp for overflow {
+impl ElementAttr for overflow {
     type Value = OptionalOverflow;
 
     const TAG_NAME: &'static str = stringify!(overflow);
@@ -244,7 +246,7 @@ impl SchemaProp for overflow {
 
 pub struct direction;
 
-impl SchemaProp for direction {
+impl ElementAttr for direction {
     type Value = Direction;
 
     const TAG_NAME: &'static str = stringify!(direction);
@@ -259,7 +261,7 @@ impl SchemaProp for direction {
 
 pub struct left;
 
-impl SchemaProp for left {
+impl ElementAttr for left {
     type Value = Val;
 
     const TAG_NAME: &'static str = stringify!(left);
@@ -274,7 +276,7 @@ impl SchemaProp for left {
 
 pub struct right;
 
-impl SchemaProp for right {
+impl ElementAttr for right {
     type Value = Val;
 
     const TAG_NAME: &'static str = stringify!(right);
@@ -289,7 +291,7 @@ impl SchemaProp for right {
 
 pub struct top;
 
-impl SchemaProp for top {
+impl ElementAttr for top {
     type Value = Val;
 
     const TAG_NAME: &'static str = stringify!(top);
@@ -304,7 +306,7 @@ impl SchemaProp for top {
 
 pub struct bottom;
 
-impl SchemaProp for bottom {
+impl ElementAttr for bottom {
     type Value = Val;
 
     const TAG_NAME: &'static str = stringify!(bottom);
@@ -319,7 +321,7 @@ impl SchemaProp for bottom {
 
 pub struct width;
 
-impl SchemaProp for width {
+impl ElementAttr for width {
     type Value = Val;
 
     const TAG_NAME: &'static str = stringify!(width);
@@ -334,7 +336,7 @@ impl SchemaProp for width {
 
 pub struct height;
 
-impl SchemaProp for height {
+impl ElementAttr for height {
     type Value = Val;
 
     const TAG_NAME: &'static str = stringify!(height);
@@ -349,7 +351,7 @@ impl SchemaProp for height {
 
 pub struct min_width;
 
-impl SchemaProp for min_width {
+impl ElementAttr for min_width {
     type Value = Val;
 
     const TAG_NAME: &'static str = stringify!(min_width);
@@ -364,7 +366,7 @@ impl SchemaProp for min_width {
 
 pub struct min_height;
 
-impl SchemaProp for min_height {
+impl ElementAttr for min_height {
     type Value = Val;
 
     const TAG_NAME: &'static str = stringify!(min_height);
@@ -379,7 +381,7 @@ impl SchemaProp for min_height {
 
 pub struct max_width;
 
-impl SchemaProp for max_width {
+impl ElementAttr for max_width {
     type Value = Val;
 
     const TAG_NAME: &'static str = stringify!(max_width);
@@ -394,7 +396,7 @@ impl SchemaProp for max_width {
 
 pub struct max_height;
 
-impl SchemaProp for max_height {
+impl ElementAttr for max_height {
     type Value = Val;
 
     const TAG_NAME: &'static str = stringify!(max_height);
@@ -409,7 +411,7 @@ impl SchemaProp for max_height {
 
 pub struct margin;
 
-impl SchemaProp for margin {
+impl ElementAttr for margin {
     type Value = UiOptionalRect;
 
     const TAG_NAME: &'static str = stringify!(margin);
@@ -430,7 +432,7 @@ impl SchemaProp for margin {
 
 pub struct padding;
 
-impl SchemaProp for padding {
+impl ElementAttr for padding {
     type Value = UiOptionalRect;
 
     const TAG_NAME: &'static str = stringify!(padding);
@@ -448,7 +450,7 @@ impl SchemaProp for padding {
         });
     }
 
-    fn set_dyn_value(&self, context: &mut SetAttrValueContext, value: SmallBox<dyn PropValue, S1>) {
+    fn set_dyn_value(&self, context: &mut SetAttrValueContext, value: SmallBox<dyn AttrValue, S1>) {
         if let Ok(value) = value.downcast::<Self::Value>() {
             self.set_value(context, value.into_inner());
         }
@@ -457,7 +459,7 @@ impl SchemaProp for padding {
 
 pub struct aspect_ratio;
 
-impl SchemaProp for aspect_ratio {
+impl ElementAttr for aspect_ratio {
     type Value = Option<f32>;
 
     const TAG_NAME: &'static str = stringify!(aspect_ratio);
@@ -472,7 +474,7 @@ impl SchemaProp for aspect_ratio {
 
 pub struct align_items;
 
-impl SchemaProp for align_items {
+impl ElementAttr for align_items {
     type Value = AlignItems;
 
     const TAG_NAME: &'static str = stringify!(align_items);
@@ -487,7 +489,7 @@ impl SchemaProp for align_items {
 
 pub struct justify_items;
 
-impl SchemaProp for justify_items {
+impl ElementAttr for justify_items {
     type Value = JustifyItems;
 
     const TAG_NAME: &'static str = stringify!(justify_items);
@@ -502,7 +504,7 @@ impl SchemaProp for justify_items {
 
 pub struct align_self;
 
-impl SchemaProp for align_self {
+impl ElementAttr for align_self {
     type Value = AlignSelf;
 
     const TAG_NAME: &'static str = stringify!(align_self);
@@ -517,7 +519,7 @@ impl SchemaProp for align_self {
 
 pub struct justify_self;
 
-impl SchemaProp for justify_self {
+impl ElementAttr for justify_self {
     type Value = JustifySelf;
 
     const TAG_NAME: &'static str = stringify!(justify_self);
@@ -532,7 +534,7 @@ impl SchemaProp for justify_self {
 
 pub struct align_content;
 
-impl SchemaProp for align_content {
+impl ElementAttr for align_content {
     type Value = AlignContent;
 
     const TAG_NAME: &'static str = stringify!(align_content);
@@ -547,7 +549,7 @@ impl SchemaProp for align_content {
 
 pub struct justify_content;
 
-impl SchemaProp for justify_content {
+impl ElementAttr for justify_content {
     type Value = JustifyContent;
 
     const TAG_NAME: &'static str = stringify!(justify_content);
@@ -562,7 +564,7 @@ impl SchemaProp for justify_content {
 
 pub struct flex_direction;
 
-impl SchemaProp for flex_direction {
+impl ElementAttr for flex_direction {
     type Value = FlexDirection;
 
     const TAG_NAME: &'static str = stringify!(flex_direction);
@@ -577,7 +579,7 @@ impl SchemaProp for flex_direction {
 
 pub struct flex_wrap;
 
-impl SchemaProp for flex_wrap {
+impl ElementAttr for flex_wrap {
     type Value = FlexWrap;
 
     const TAG_NAME: &'static str = stringify!(flex_wrap);
@@ -592,7 +594,7 @@ impl SchemaProp for flex_wrap {
 
 pub struct flex_grow;
 
-impl SchemaProp for flex_grow {
+impl ElementAttr for flex_grow {
     type Value = f32;
 
     const TAG_NAME: &'static str = stringify!(flex_grow);
@@ -607,7 +609,7 @@ impl SchemaProp for flex_grow {
 
 pub struct flex_shrink;
 
-impl SchemaProp for flex_shrink {
+impl ElementAttr for flex_shrink {
     type Value = f32;
 
     const TAG_NAME: &'static str = stringify!(flex_shrink);
@@ -622,7 +624,7 @@ impl SchemaProp for flex_shrink {
 
 pub struct flex_basis;
 
-impl SchemaProp for flex_basis {
+impl ElementAttr for flex_basis {
     type Value = Val;
 
     const TAG_NAME: &'static str = stringify!(flex_basis);
@@ -637,7 +639,7 @@ impl SchemaProp for flex_basis {
 
 pub struct column_gap;
 
-impl SchemaProp for column_gap {
+impl ElementAttr for column_gap {
     type Value = Val;
 
     const TAG_NAME: &'static str = stringify!(column_gap);
@@ -652,7 +654,7 @@ impl SchemaProp for column_gap {
 
 pub struct row_gap;
 
-impl SchemaProp for row_gap {
+impl ElementAttr for row_gap {
     type Value = Val;
 
     const TAG_NAME: &'static str = stringify!(row_gap);
@@ -667,7 +669,7 @@ impl SchemaProp for row_gap {
 
 pub struct visibility;
 
-impl SchemaProp for visibility {
+impl ElementAttr for visibility {
     type Value = Visibility;
 
     const TAG_NAME: &'static str = stringify!(visibility);
@@ -680,7 +682,7 @@ impl SchemaProp for visibility {
 
 pub struct transform;
 
-impl SchemaProp for transform {
+impl ElementAttr for transform {
     type Value = Transform;
 
     const TAG_NAME: &'static str = stringify!(transform);
@@ -693,7 +695,7 @@ impl SchemaProp for transform {
 
 pub struct transation;
 
-impl SchemaProp for transation {
+impl ElementAttr for transation {
     type Value = Vec3;
 
     const TAG_NAME: &'static str = stringify!(transation);
@@ -711,7 +713,7 @@ impl SchemaProp for transation {
 
 pub struct rotation;
 
-impl SchemaProp for rotation {
+impl ElementAttr for rotation {
     type Value = Quat;
 
     const TAG_NAME: &'static str = stringify!(rotation);
@@ -729,7 +731,7 @@ impl SchemaProp for rotation {
 
 pub struct scale;
 
-impl SchemaProp for scale {
+impl ElementAttr for scale {
     type Value = Vec3;
 
     const TAG_NAME: &'static str = stringify!(scale);
@@ -744,9 +746,10 @@ impl SchemaProp for scale {
         }
     }
 }
+
 pub struct text_color;
 
-impl SchemaProp for text_color {
+impl ElementAttr for text_color {
     type Value = Color;
 
     const TAG_NAME: &'static str = stringify!(text_color);
@@ -762,7 +765,7 @@ impl SchemaProp for text_color {
 
 pub struct font_size;
 
-impl SchemaProp for font_size {
+impl ElementAttr for font_size {
     type Value = f32;
 
     const TAG_NAME: &'static str = stringify!(font_size);
@@ -778,7 +781,7 @@ impl SchemaProp for font_size {
 
 pub struct text_linebreak;
 
-impl SchemaProp for text_linebreak {
+impl ElementAttr for text_linebreak {
     type Value = BreakLineOn;
 
     const TAG_NAME: &'static str = stringify!(text_linebreak);
@@ -794,7 +797,7 @@ impl SchemaProp for text_linebreak {
 
 pub struct text_align;
 
-impl SchemaProp for text_align {
+impl ElementAttr for text_align {
     type Value = TextAlignment;
 
     const TAG_NAME: &'static str = stringify!(text_align);
@@ -810,7 +813,7 @@ impl SchemaProp for text_align {
 
 pub struct font;
 
-impl SchemaProp for font {
+impl ElementAttr for font {
     type Value = Handle<Font>;
 
     const TAG_NAME: &'static str = stringify!(font);

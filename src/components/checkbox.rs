@@ -2,7 +2,7 @@
 
 use std::rc::Rc;
 
-use crate::{prelude::*, components::use_controlled_state};
+use crate::{components::use_controlled_state, prelude::*};
 
 #[derive(Props)]
 pub struct CheckboxProps<'a> {

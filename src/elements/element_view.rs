@@ -5,15 +5,15 @@ use bevy::ecs::world::EntityMut;
 use bevy::prelude::NodeBundle;
 use bevy::reflect::Reflect;
 
+use crate::{ElementType, impl_element_type_base};
 use crate::prelude::World;
-use crate::{impl_schema_type_base, SchemaType};
 
-impl_schema_type_base!(
+impl_element_type_base!(
     #[derive(Reflect, Debug, Clone, Copy)]
     view
 );
 
-impl SchemaType for view {
+impl ElementType for view {
     fn spawn<'w>(&self, world: &'w mut World) -> EntityMut<'w> {
         world.spawn(NodeBundle::default())
     }

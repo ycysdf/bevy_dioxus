@@ -13,7 +13,7 @@ use bevy::ptr::OwningPtr;
 use bevy::reflect::{ReflectFromPtr, TypeRegistryInternal as TypeRegistry};
 
 use crate::entity_extra_data::EntitiesExtraData;
-use crate::get_schema_type;
+use crate::get_element_type;
 use crate::prelude::{
     default, Display, error, Name, NodeBundle, ReflectComponent,
 };
@@ -70,7 +70,7 @@ fn clone_entity<'a>(
         ));
     };
     let type_registry = world.resource::<AppTypeRegistry>().clone();
-    let schema_type = get_schema_type(entity_extra_data.schema_name);
+    let schema_type = get_element_type(entity_extra_data.schema_name);
     let ignore_type_ids = vec![TypeId::of::<Parent>(), TypeId::of::<Children>()];
 
     let mut components = vec![];

@@ -5,19 +5,19 @@ use bevy::ecs::world::EntityMut;
 use bevy::prelude::World;
 use bevy::reflect::{Reflect, ReflectFromPtr};
 
-use crate::prelude::{warn, AppTypeRegistry, Entity};
-use crate::schema_core::SchemaPropUntyped;
+use crate::element_core::ElementAttrUntyped;
+use crate::prelude::{AppTypeRegistry, Entity, warn};
 use crate::ReflectExtension;
 
-pub trait SchemaTypeUnTyped: Reflect {
-    fn schema_name(&self) -> &'static str;
+pub trait ElementTypeUnTyped: Reflect {
+    fn name(&self) -> &'static str;
     fn namespace(&self) -> Option<&'static str>;
 
-    fn props(&self) -> &'static [&'static dyn SchemaPropUntyped];
+    fn attrs(&self) -> &'static [&'static dyn ElementAttrUntyped];
 
-    fn prop(&self, attr_name: &str) -> Option<&'static dyn SchemaPropUntyped>;
-    fn prop_by_index(&self, index: u8) -> &'static dyn SchemaPropUntyped {
-        self.props()[index as usize]
+    fn attr(&self, attr_name: &str) -> Option<&'static dyn ElementAttrUntyped>;
+    fn prop_by_index(&self, index: u8) -> &'static dyn ElementAttrUntyped {
+        self.attrs()[index as usize]
     }
     fn spawn<'w>(&self, world: &'w mut World) -> EntityMut<'w>;
     fn try_insert_no_reflect_components(
@@ -30,9 +30,9 @@ pub trait SchemaTypeUnTyped: Reflect {
     ) -> bool;
 }
 
-impl<T: SchemaTypeBase + SchemaType> SchemaTypeUnTyped for T {
+impl<T: ElementTypeBase + ElementType> ElementTypeUnTyped for T {
     #[inline]
-    fn schema_name(&self) -> &'static str {
+    fn name(&self) -> &'static str {
         T::TAG_NAME
     }
 
@@ -42,13 +42,13 @@ impl<T: SchemaTypeBase + SchemaType> SchemaTypeUnTyped for T {
     }
 
     #[inline]
-    fn props(&self) -> &'static [&'static dyn SchemaPropUntyped] {
+    fn attrs(&self) -> &'static [&'static dyn ElementAttrUntyped] {
         T::PROPS
     }
 
     #[inline]
-    fn prop(&self, attr_name: &str) -> Option<&'static dyn SchemaPropUntyped> {
-        T::prop(attr_name)
+    fn attr(&self, attr_name: &str) -> Option<&'static dyn ElementAttrUntyped> {
+        T::attr(attr_name)
     }
     #[inline]
     fn spawn<'w>(&self, world: &'w mut World) -> EntityMut<'w> {
@@ -74,13 +74,13 @@ impl<T: SchemaTypeBase + SchemaType> SchemaTypeUnTyped for T {
     }
 }
 
-pub trait SchemaTypeBase: Reflect {
+pub trait ElementTypeBase: Reflect {
     const TAG_NAME: &'static str;
     const NAME_SPACE: Option<&'static str> = None;
-    const PROPS: &'static [&'static dyn SchemaPropUntyped];
+    const PROPS: &'static [&'static dyn ElementAttrUntyped];
     const NAME: &'static str = Self::TAG_NAME;
 
-    fn prop(attr_name: &str) -> Option<&'static dyn SchemaPropUntyped> {
+    fn attr(attr_name: &str) -> Option<&'static dyn ElementAttrUntyped> {
         Self::PROPS.iter().find(|n| n.name() == attr_name).copied()
     }
 }
@@ -116,7 +116,7 @@ pub fn default_clone_component(
     Some(reflect_obj.into_any())
 }
 
-pub trait SchemaType {
+pub trait ElementType {
     fn spawn<'w>(&self, world: &'w mut World) -> EntityMut<'w>;
     #[inline]
     fn try_insert_no_reflect_components(

@@ -4,7 +4,8 @@ use bevy::prelude::{Entity, Resource};
 use bevy::utils::{default, HashMap};
 use smallvec::SmallVec;
 
-use crate::{PropValue, SmallBox};
+use crate::element_core::AttrValue;
+use crate::SmallBox;
 use crate::smallbox::S1;
 use crate::tailwind::TailwindClassItem;
 
@@ -15,7 +16,7 @@ pub struct EntityExtraData {
     pub class_attr_is_set: u64,
     class_attr_set_count: u8,
     pub interaction_classes: SmallVec<[TailwindClassItem; 8]>,
-    pub normal_props_map: HashMap<u8, SmallBox<dyn PropValue, S1>>,
+    pub normal_props_map: HashMap<u8, SmallBox<dyn AttrValue, S1>>,
 }
 
 impl EntityExtraData {

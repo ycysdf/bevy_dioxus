@@ -13,7 +13,7 @@ use std::ops::CoerceUnsized;
 use std::ops::Deref;
 use std::ptr;
 
-use crate::PropValue;
+use crate::element_core::AttrValue;
 
 /*#[cfg(not(any(feature = "std", doctest)))]
 use ::core::alloc::{self, Layout};
@@ -203,7 +203,7 @@ impl<Space> SmallBox<dyn Any, Space> {
     }
 }
 
-impl<Space> SmallBox<dyn PropValue, Space> {
+impl<Space> SmallBox<dyn AttrValue, Space> {
     #[inline]
     pub fn downcast<T: Any>(self) -> Result<SmallBox<T, Space>, Self> {
         if self.deref().as_any().is::<T>() {

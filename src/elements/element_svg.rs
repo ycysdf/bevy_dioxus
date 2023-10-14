@@ -7,9 +7,9 @@ use bevy::prelude::{AssetServer, Handle};
 use bevy::sprite::Mesh2dHandle;
 use bevy_svg::prelude::{Origin, Svg};
 
-use crate::schema_core::{DioxusAttributeDescription, SchemaProp, SchemaPropUntyped, SchemaType};
-use crate::schema_props::COMMON_PROPS_COUNT;
-use crate::{common_props_define, impl_schema_type, schema_props};
+use crate::element_core::{DioxusAttributeDescription, SchemaProp, SchemaPropUntyped, SchemaType};
+use crate::element_attrs::COMMON_PROPS_COUNT;
+use crate::{common_props_define, impl_schema_type, element_attrs};
 
 impl_schema_type!(svg, src);
 

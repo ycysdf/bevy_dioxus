@@ -1,17 +1,18 @@
 use std::rc::Rc;
 
-use crate::prelude::*;
 pub use checkbox::*;
 pub use selectable_list::*;
+
+use crate::prelude::*;
 
 mod checkbox;
 mod selectable_list;
 
-pub fn use_state_change<'a, T: PartialEq + 'static>(
-    cx: &'a ScopeState,
+pub fn use_state_change<T: PartialEq + 'static>(
+    cx: &ScopeState,
     mut on_change: impl FnMut(Rc<T>),
     state: Rc<T>,
-) -> &'a UseState<Rc<T>> {
+) -> &UseState<Rc<T>> {
     let prev_state = use_state(cx, {
         to_owned![state];
         move || state
@@ -25,11 +26,11 @@ pub fn use_state_change<'a, T: PartialEq + 'static>(
 }
 
 #[inline]
-pub fn use_uncontrolled_state<'a, T: PartialEq + 'static>(
-    cx: &'a ScopeState,
-    initial_state_fn: impl DeferValueOrValue<Value = T>,
-    mut on_change: impl FnMut(Rc<T>),
-) -> (&'a UseState<T>, &'a UseState<Rc<T>>) {
+pub fn use_uncontrolled_state<T: PartialEq + 'static>(
+    cx: &ScopeState,
+    initial_state_fn: impl DeferValueOrValue<Value=T>,
+    on_change: impl FnMut(Rc<T>),
+) -> (&UseState<T>, &UseState<Rc<T>>) {
     let uncontrolled_state = use_state(cx, || initial_state_fn.get());
     let prev_state = use_state_change(cx, on_change, uncontrolled_state.current());
 
@@ -47,7 +48,9 @@ impl<T: 'static> DeferValueOrValue for T {
         self
     }
 }
+
 pub struct DeferValue;
+
 impl<T: FnOnce() -> R, R: 'static> DeferValueOrValue<DeferValue> for T {
     type Value = R;
     fn get(self) -> R {
@@ -55,12 +58,12 @@ impl<T: FnOnce() -> R, R: 'static> DeferValueOrValue<DeferValue> for T {
     }
 }
 
-pub fn use_controlled_state<'a, T: PartialEq + Clone + 'static>(
-    cx: &'a ScopeState,
+pub fn use_controlled_state<T: PartialEq + Clone + 'static>(
+    cx: &ScopeState,
     value: Option<T>,
-    initial_value_fn: impl DeferValueOrValue<Value = T>,
-    mut on_change: impl FnMut(Rc<T>),
-) -> &'a UseState<T> {
+    initial_value_fn: impl DeferValueOrValue<Value=T>,
+    on_change: impl FnMut(Rc<T>),
+) -> &UseState<T> {
     let (uncontrolled_state, _) = use_uncontrolled_state(cx, initial_value_fn, on_change);
 
     let value = match value {

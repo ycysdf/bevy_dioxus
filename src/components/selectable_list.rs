@@ -2,12 +2,11 @@
 
 use std::rc::Rc;
 
-
 use crate::{components::use_controlled_state, prelude::*};
 
 #[derive(Clone)]
 pub struct SelectableListContext<T: PartialEq + Clone + Default + 'static> {
-    pub selected: UseState<T>
+    pub selected: UseState<T>,
 }
 
 #[derive(Props)]

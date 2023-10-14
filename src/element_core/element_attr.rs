@@ -1,33 +1,11 @@
-use std::ops::Deref;
-
+use crate::DioxusAttributeDescription;
 use crate::dom_commands::DomAttributeValue;
-use crate::prelude::Reflect;
-use crate::smallbox::S1;
-use crate::SetAttrValueContext;
+use crate::element_attrs::SetAttrValueContext;
+use crate::element_core::AttrValue;
 use crate::SmallBox;
+use crate::smallbox::S1;
 
-pub type DioxusAttributeDescription = (&'static str, Option<&'static str>, bool);
-
-pub trait PropValue: Reflect + Send + Sync + 'static // where Option<Self>: From<DomAttributeValue>
-{
-    fn clone_prop_value(&self) -> SmallBox<dyn PropValue, S1>;
-    fn default_value() -> Self
-    where
-        Self: Sized;
-    fn merge_value(&mut self, _value: SmallBox<dyn PropValue, S1>) {}
-}
-
-impl Clone for SmallBox<dyn PropValue, S1> {
-    fn clone(&self) -> Self {
-        self.deref().clone_prop_value()
-    }
-
-    fn clone_from(&mut self, source: &Self) {
-        *self = source.clone()
-    }
-}
-
-pub trait SchemaPropUntyped: Send + Sync {
+pub trait ElementAttrUntyped: Send + Sync {
     fn name(&self) -> &'static str;
     fn namespace(&self) -> Option<&'static str>;
     fn volatile(&self) -> bool;
@@ -37,20 +15,20 @@ pub trait SchemaPropUntyped: Send + Sync {
     fn index(&self) -> u8;
 
     fn set_by_attr_value(&self, context: &mut SetAttrValueContext, value: DomAttributeValue);
-    fn set_dyn_value(&self, context: &mut SetAttrValueContext, value: SmallBox<dyn PropValue, S1>);
+    fn set_dyn_value(&self, context: &mut SetAttrValueContext, value: SmallBox<dyn AttrValue, S1>);
 
     fn set_to_default_value(&self, context: &mut SetAttrValueContext);
 
     fn set_dyn_value_in_class(
         &self,
         context: &mut SetAttrValueContext,
-        value: SmallBox<dyn PropValue, S1>,
+        value: SmallBox<dyn AttrValue, S1>,
     );
 }
 
-impl<T: SchemaProp> SchemaPropUntyped for T
-where
-    Option<T::Value>: From<DomAttributeValue>,
+impl<T: ElementAttr> ElementAttrUntyped for T
+    where
+        Option<T::Value>: From<DomAttributeValue>,
 {
     #[inline]
     fn name(&self) -> &'static str {
@@ -83,7 +61,7 @@ where
     }
 
     #[inline]
-    fn set_dyn_value(&self, context: &mut SetAttrValueContext, value: SmallBox<dyn PropValue, S1>) {
+    fn set_dyn_value(&self, context: &mut SetAttrValueContext, value: SmallBox<dyn AttrValue, S1>) {
         self.set_dyn_value(context, value);
     }
 
@@ -96,17 +74,17 @@ where
     fn set_dyn_value_in_class(
         &self,
         context: &mut SetAttrValueContext,
-        value: SmallBox<dyn PropValue, S1>,
+        value: SmallBox<dyn AttrValue, S1>,
     ) {
         self.set_dyn_value_in_class(context, value);
     }
 }
 
-pub trait SchemaProp: Send + Sync
-where
-    Option<Self::Value>: From<DomAttributeValue>,
+pub trait ElementAttr: Send + Sync
+    where
+        Option<Self::Value>: From<DomAttributeValue>,
 {
-    type Value: PropValue + Sized;
+    type Value: AttrValue + Sized;
 
     const TAG_NAME: &'static str;
     const NAME: &'static str = Self::TAG_NAME;
@@ -127,7 +105,7 @@ where
     fn set_value(&self, context: &mut SetAttrValueContext, value: impl Into<Self::Value>);
 
     #[inline]
-    fn set_dyn_value(&self, context: &mut SetAttrValueContext, value: SmallBox<dyn PropValue, S1>) {
+    fn set_dyn_value(&self, context: &mut SetAttrValueContext, value: SmallBox<dyn AttrValue, S1>) {
         if let Ok(value) = value.downcast::<Self::Value>() {
             self.set_value(context, value.into_inner());
         }
@@ -142,7 +120,7 @@ where
     fn set_dyn_value_in_class(
         &self,
         context: &mut SetAttrValueContext,
-        value: SmallBox<dyn PropValue, S1>,
+        value: SmallBox<dyn AttrValue, S1>,
     ) {
         if let Ok(value) = value.downcast::<Self::Value>() {
             self.set_value_in_class(context, value.into_inner());

@@ -3,27 +3,34 @@
 
 use std::any::TypeId;
 
-use crate::prelude::{warn, Entity, TextAlignment, World};
-use crate::schema_props::COMMON_PROPS_COUNT;
-use crate::{
-    impl_schema_type_base, SchemaType, SetAttrValueContext, TextSchemaType,
-    TextSections, ReflectTextSchemaType,
-};
 use bevy::ecs::component::ComponentInfo;
 use bevy::ecs::world::EntityMut;
-use bevy::prelude::{AppTypeRegistry, Color, TextBundle};
+use bevy::prelude::{AppTypeRegistry, TextBundle};
 use bevy::reflect::Reflect;
-use bevy::text::{BreakLineOn, Text, TextLayoutInfo};
+use bevy::text::{Text, TextLayoutInfo};
 use bevy::ui::widget::TextFlags;
+
 use text_props::*;
-impl_schema_type_base!(
+
+use crate::{
+    element_attrs::COMMON_PROPS_COUNT,
+    ElementType,
+    impl_element_type_base,
+    prelude::{Entity, World},
+    ReflectTextStyledElementType,
+    SetAttrValueContext,
+    TextSections,
+    TextStyledElementType,
+};
+
+impl_element_type_base!(
     #[derive(Reflect, Debug, Clone, Copy)]
-    #[reflect(TextSchemaType)]
+    #[reflect(TextStyledElementType)]
     text,
     sections
 );
 
-impl SchemaType for text {
+impl ElementType for text {
     fn spawn<'w>(&self, world: &'w mut World) -> EntityMut<'w> {
         world.spawn(TextBundle::default())
     }
@@ -48,11 +55,11 @@ impl SchemaType for text {
     }
 }
 
-impl TextSchemaType for text {
+impl TextStyledElementType for text {
     fn set_font(
         &self,
         entity_ref: &mut EntityMut,
-        value: <crate::schema_props::font as SchemaProp>::Value,
+        value: <crate::element_attrs::font as ElementAttr>::Value,
     ) {
         let Some(mut t) = entity_ref.get_mut::<Text>() else {
             return;
@@ -65,7 +72,7 @@ impl TextSchemaType for text {
     fn set_font_size(
         &self,
         entity_ref: &mut EntityMut,
-        value: <crate::schema_props::font_size as SchemaProp>::Value,
+        value: <crate::element_attrs::font_size as ElementAttr>::Value,
     ) {
         let Some(mut t) = entity_ref.get_mut::<Text>() else {
             return;
@@ -78,7 +85,7 @@ impl TextSchemaType for text {
     fn set_text_color(
         &self,
         entity_ref: &mut EntityMut,
-        value: <crate::schema_props::text_color as SchemaProp>::Value,
+        value: <crate::element_attrs::text_color as ElementAttr>::Value,
     ) {
         let Some(mut t) = entity_ref.get_mut::<Text>() else {
             return;
@@ -91,7 +98,7 @@ impl TextSchemaType for text {
     fn set_text_linebreak(
         &self,
         entity_ref: &mut EntityMut,
-        value: <crate::schema_props::text_linebreak as SchemaProp>::Value,
+        value: <crate::element_attrs::text_linebreak as ElementAttr>::Value,
     ) {
         let Some(mut t) = entity_ref.get_mut::<Text>() else {
             return;
@@ -102,7 +109,7 @@ impl TextSchemaType for text {
     fn set_text_align(
         &self,
         entity_ref: &mut EntityMut,
-        value: <crate::schema_props::text_align as SchemaProp>::Value,
+        value: <crate::element_attrs::text_align as ElementAttr>::Value,
     ) {
         let Some(mut t) = entity_ref.get_mut::<Text>() else {
             return;
@@ -113,9 +120,10 @@ impl TextSchemaType for text {
 
 pub mod text_props {
     use super::*;
+
     pub struct sections;
 
-    impl SchemaProp for sections {
+    impl ElementAttr for sections {
         type Value = TextSections;
 
         const TAG_NAME: &'static str = "sections";

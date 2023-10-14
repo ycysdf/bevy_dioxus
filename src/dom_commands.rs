@@ -4,21 +4,21 @@ use bevy::core::Name;
 use bevy::ecs::system::Command;
 use bevy::hierarchy::BuildWorldChildren;
 use bevy::prelude::{
-    default, error, AppTypeRegistry, Color, DespawnRecursiveExt, Entity, Mut, NodeBundle, Reflect,
+    AppTypeRegistry, Color, default, DespawnRecursiveExt, Entity, error, Mut, NodeBundle, Reflect,
     SpatialBundle, Text, TextBundle, TextSection, TextStyle, Visibility, World,
 };
 use dioxus::core::ElementId;
 
+use crate::{
+    ecs_fns, elements, ElementTypeBase, get_element_type, NodeTemplate, SetAttrValueContext,
+    TemplateWorld,
+};
 use crate::dom_template::{DomTemplate, DomTemplateAttribute, DomTemplateNode};
 use crate::ecs_fns::{insert_after, insert_before, WorldExtension};
 use crate::entity_extra_data::{EntitiesExtraData, EntityExtraData};
+use crate::prelude::dioxus_elements::events::{listen_dom_event_by_name, unlisten_dom_event_by_name};
 use crate::prelude::warn;
-use crate::schema_events::events::{listen_dom_event_by_name, unlisten_dom_event_by_name};
 use crate::vdm_data::{TemplateData, VDomData};
-use crate::{
-    ecs_fns, get_schema_type, schemas, NodeTemplate, SchemaTypeBase, SetAttrValueContext,
-    TemplateWorld,
-};
 
 pub fn create_template_node(
     template_world: &mut World,
@@ -57,12 +57,12 @@ pub fn create_template_node(
                     }
                 })
                 .collect::<Vec<_>>();
-            let schema_type = get_schema_type(tag);
+            let schema_type = get_element_type(tag);
             let mut entity_ref = schema_type.spawn(template_world);
             let entity = entity_ref.id();
             let mut entity_extra_data = EntityExtraData::new(tag);
             for (name, _) in static_attrs.iter() {
-                let Some(attr) = schema_type.prop(&name) else {
+                let Some(attr) = schema_type.attr(&name) else {
                     warn!("no found attr {:?}", name);
                     continue;
                 };
@@ -76,7 +76,7 @@ pub fn create_template_node(
                 type_registry,
             };
             for (name, value) in static_attrs.into_iter() {
-                let Some(attr) = schema_type.prop(&name) else {
+                let Some(attr) = schema_type.attr(&name) else {
                     warn!("no found attr {:?}", name);
                     continue;
                 };
@@ -100,7 +100,7 @@ pub fn create_template_node(
                     ..default()
                 }),
             );
-            entities_extra_data.insert(entity_ref.id(), EntityExtraData::new(schemas::text::NAME));
+            entities_extra_data.insert(entity_ref.id(), EntityExtraData::new(elements::text::NAME));
             entity_ref.id()
         }
         DomTemplateNode::Dynamic { id } => {
@@ -123,7 +123,7 @@ pub fn create_template_node(
                 ),
                 ..default()
             });
-            entities_extra_data.insert(entity_ref.id(), EntityExtraData::new(schemas::text::NAME));
+            entities_extra_data.insert(entity_ref.id(), EntityExtraData::new(elements::text::NAME));
             entity_ref.id()
         }
     }
@@ -149,7 +149,7 @@ impl Command for CreateTemplates {
                                     template_world,
                                     entities_extra_data.as_mut(),
                                     n,
-                                    type_registry.clone()
+                                    type_registry.clone(),
                                 ));
                             }
 
@@ -448,7 +448,7 @@ impl Command for CreateTextNode {
                     },
                 ),
                 ..default()
-            },));
+            }, ));
             let text_entity = text_entity_ref.id();
             vdom_data.element_id_to_entity.insert(self.id, text_entity);
             vdom_data.loaded_node_stack.push(text_entity);
@@ -508,8 +508,8 @@ impl Command for SetAttribute {
                 error!("No Found EntityExtraData by {:#?}", entity);
                 return;
             };
-            let schema_type = get_schema_type(entity_extra_data.schema_name);
-            let Some(attr) = schema_type.prop(self.name) else {
+            let schema_type = get_element_type(entity_extra_data.schema_name);
+            let Some(attr) = schema_type.attr(self.name) else {
                 error!("No Found Attr by {:#?}", self.name);
                 return;
             };
@@ -521,7 +521,7 @@ impl Command for SetAttribute {
                 &mut SetAttrValueContext {
                     entity_ref: &mut entity_ref,
                     entities_extra_data: entities_extra_data.deref_mut(),
-                    type_registry
+                    type_registry,
                 },
                 self.value,
             );

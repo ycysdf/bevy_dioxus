@@ -1,18 +1,20 @@
 use bevy::asset::Asset;
 use bevy::ecs::world::EntityMut;
 use bevy::prelude::*;
-use bevy::reflect::{TypeData, TypePath};
+use bevy::reflect::TypePath;
 use bevy::text::BreakLineOn;
 use serde::{Deserialize, Serialize};
 
+use crate::{
+    ElementTypeUnTyped, get_element_type, ReflectTextStyledElementType, smallbox,
+    SmallBox,
+    TextStyledElementType,
+};
 use crate::dom_commands::DomAttributeValue;
+use crate::element_core::AttrValue;
 use crate::entity_extra_data::{EntitiesExtraData, EntityExtraData};
 use crate::smallbox::S1;
 use crate::tailwind::{parse_color, parse_size_val};
-use crate::{
-    get_schema_type, smallbox, PropValue, ReflectTextSchemaType, SchemaTypeUnTyped, SmallBox,
-    TextSchemaType,
-};
 
 pub struct SetAttrValueContext<'w, 'e> {
     pub entities_extra_data: &'e mut EntitiesExtraData,
@@ -35,26 +37,26 @@ impl<'w, 'e> SetAttrValueContext<'w, 'e> {
             .world_scope(|world| f(&mut world.entity_mut(entity)));
     }
 
-    pub fn schema_type(&mut self) -> &'static dyn SchemaTypeUnTyped {
-        get_schema_type(self.entity_extra_data().schema_name)
+    pub fn element_type(&mut self) -> &'static dyn ElementTypeUnTyped {
+        get_element_type(self.entity_extra_data().schema_name)
     }
 
-    pub fn get_text_schema_type(&mut self) -> Option<&'static dyn TextSchemaType> {
-        self.get_entity_text_schema_type(self.entity_ref.id())
+    pub fn get_text_element_type(&mut self) -> Option<&'static dyn TextStyledElementType> {
+        self.get_entity_text_element_type(self.entity_ref.id())
     }
 
-    pub fn get_entity_text_schema_type(
+    pub fn get_entity_text_element_type(
         &mut self,
         entity: Entity,
-    ) -> Option<&'static dyn TextSchemaType> {
+    ) -> Option<&'static dyn TextStyledElementType> {
         let schema_name = self
             .entities_extra_data
             .get(&entity)
             .map(|n| n.schema_name)?;
-        let schema_type = get_schema_type(schema_name);
+        let schema_type = get_element_type(schema_name);
         let type_registry = self.type_registry.read();
         type_registry
-            .get_type_data::<ReflectTextSchemaType>(schema_type.type_id())
+            .get_type_data::<ReflectTextStyledElementType>(schema_type.type_id())
             .and_then(|n| n.get(schema_type.as_reflect()))
     }
 }
@@ -82,6 +84,14 @@ impl UiOptionalRect {
             right: Some(val),
             top: Some(val),
             bottom: Some(val),
+        }
+    }
+    pub fn zero() -> Self {
+        Self {
+            left: Some(Val::Px(0.)),
+            right: Some(Val::Px(0.)),
+            top: Some(Val::Px(0.)),
+            bottom: Some(Val::Px(0.)),
         }
     }
 
@@ -763,8 +773,8 @@ impl<T: Asset> From<DomAttributeValue> for Option<Handle<T>> {
     }
 }
 
-impl PropValue for Color {
-    fn clone_prop_value(&self) -> SmallBox<dyn PropValue, S1> {
+impl AttrValue for Color {
+    fn clone_prop_value(&self) -> SmallBox<dyn AttrValue, S1> {
         smallbox!(self.clone())
     }
 
@@ -773,8 +783,8 @@ impl PropValue for Color {
     }
 }
 
-impl PropValue for f64 {
-    fn clone_prop_value(&self) -> SmallBox<dyn PropValue, S1> {
+impl AttrValue for f64 {
+    fn clone_prop_value(&self) -> SmallBox<dyn AttrValue, S1> {
         smallbox!(self.clone())
     }
     fn default_value() -> Self {
@@ -782,8 +792,8 @@ impl PropValue for f64 {
     }
 }
 
-impl PropValue for bool {
-    fn clone_prop_value(&self) -> SmallBox<dyn PropValue, S1> {
+impl AttrValue for bool {
+    fn clone_prop_value(&self) -> SmallBox<dyn AttrValue, S1> {
         smallbox!(self.clone())
     }
     fn default_value() -> Self {
@@ -791,8 +801,8 @@ impl PropValue for bool {
     }
 }
 
-impl PropValue for i64 {
-    fn clone_prop_value(&self) -> SmallBox<dyn PropValue, S1> {
+impl AttrValue for i64 {
+    fn clone_prop_value(&self) -> SmallBox<dyn AttrValue, S1> {
         smallbox!(self.clone())
     }
     fn default_value() -> Self {
@@ -800,8 +810,8 @@ impl PropValue for i64 {
     }
 }
 
-impl PropValue for Texture {
-    fn clone_prop_value(&self) -> SmallBox<dyn PropValue, S1> {
+impl AttrValue for Texture {
+    fn clone_prop_value(&self) -> SmallBox<dyn AttrValue, S1> {
         smallbox!(self.clone())
     }
     fn default_value() -> Self {
@@ -809,8 +819,8 @@ impl PropValue for Texture {
     }
 }
 
-impl PropValue for f32 {
-    fn clone_prop_value(&self) -> SmallBox<dyn PropValue, S1> {
+impl AttrValue for f32 {
+    fn clone_prop_value(&self) -> SmallBox<dyn AttrValue, S1> {
         smallbox!(self.clone())
     }
     fn default_value() -> Self {
@@ -818,8 +828,8 @@ impl PropValue for f32 {
     }
 }
 
-impl PropValue for Val {
-    fn clone_prop_value(&self) -> SmallBox<dyn PropValue, S1> {
+impl AttrValue for Val {
+    fn clone_prop_value(&self) -> SmallBox<dyn AttrValue, S1> {
         smallbox!(self.clone())
     }
     fn default_value() -> Self {
@@ -827,8 +837,8 @@ impl PropValue for Val {
     }
 }
 
-impl PropValue for BorderColor {
-    fn clone_prop_value(&self) -> SmallBox<dyn PropValue, S1> {
+impl AttrValue for BorderColor {
+    fn clone_prop_value(&self) -> SmallBox<dyn AttrValue, S1> {
         smallbox!(self.clone())
     }
     fn default_value() -> Self {
@@ -836,15 +846,15 @@ impl PropValue for BorderColor {
     }
 }
 
-impl PropValue for UiOptionalRect {
-    fn clone_prop_value(&self) -> SmallBox<dyn PropValue, S1> {
+impl AttrValue for UiOptionalRect {
+    fn clone_prop_value(&self) -> SmallBox<dyn AttrValue, S1> {
         smallbox!(self.clone())
     }
     fn default_value() -> Self {
-        <Self as Default>::default()
+        UiOptionalRect::zero()
     }
 
-    fn merge_value(&mut self, value: SmallBox<dyn PropValue, S1>) {
+    fn merge_value(&mut self, value: SmallBox<dyn AttrValue, S1>) {
         let value = *value.downcast::<Self>().ok().unwrap();
         self.left = self.left.or_else(|| value.left);
         self.right = self.right.or_else(|| value.right);
@@ -853,8 +863,8 @@ impl PropValue for UiOptionalRect {
     }
 }
 
-impl PropValue for Display {
-    fn clone_prop_value(&self) -> SmallBox<dyn PropValue, S1> {
+impl AttrValue for Display {
+    fn clone_prop_value(&self) -> SmallBox<dyn AttrValue, S1> {
         smallbox!(self.clone())
     }
     fn default_value() -> Self {
@@ -862,8 +872,8 @@ impl PropValue for Display {
     }
 }
 
-impl PropValue for PositionType {
-    fn clone_prop_value(&self) -> SmallBox<dyn PropValue, S1> {
+impl AttrValue for PositionType {
+    fn clone_prop_value(&self) -> SmallBox<dyn AttrValue, S1> {
         smallbox!(self.clone())
     }
     fn default_value() -> Self {
@@ -871,23 +881,23 @@ impl PropValue for PositionType {
     }
 }
 
-impl PropValue for OptionalOverflow {
-    fn clone_prop_value(&self) -> SmallBox<dyn PropValue, S1> {
+impl AttrValue for OptionalOverflow {
+    fn clone_prop_value(&self) -> SmallBox<dyn AttrValue, S1> {
         smallbox!(self.clone())
     }
     fn default_value() -> Self {
         <Self as Default>::default()
     }
 
-    fn merge_value(&mut self, value: SmallBox<dyn PropValue, S1>) {
+    fn merge_value(&mut self, value: SmallBox<dyn AttrValue, S1>) {
         let value = *value.downcast::<Self>().ok().unwrap();
         self.x = self.x.or_else(|| value.x);
         self.y = self.y.or_else(|| value.y);
     }
 }
 
-impl PropValue for Direction {
-    fn clone_prop_value(&self) -> SmallBox<dyn PropValue, S1> {
+impl AttrValue for Direction {
+    fn clone_prop_value(&self) -> SmallBox<dyn AttrValue, S1> {
         smallbox!(self.clone())
     }
     fn default_value() -> Self {
@@ -895,8 +905,8 @@ impl PropValue for Direction {
     }
 }
 
-impl PropValue for AlignItems {
-    fn clone_prop_value(&self) -> SmallBox<dyn PropValue, S1> {
+impl AttrValue for AlignItems {
+    fn clone_prop_value(&self) -> SmallBox<dyn AttrValue, S1> {
         smallbox!(self.clone())
     }
     fn default_value() -> Self {
@@ -904,8 +914,8 @@ impl PropValue for AlignItems {
     }
 }
 
-impl PropValue for JustifyItems {
-    fn clone_prop_value(&self) -> SmallBox<dyn PropValue, S1> {
+impl AttrValue for JustifyItems {
+    fn clone_prop_value(&self) -> SmallBox<dyn AttrValue, S1> {
         smallbox!(self.clone())
     }
     fn default_value() -> Self {
@@ -913,8 +923,8 @@ impl PropValue for JustifyItems {
     }
 }
 
-impl PropValue for AlignSelf {
-    fn clone_prop_value(&self) -> SmallBox<dyn PropValue, S1> {
+impl AttrValue for AlignSelf {
+    fn clone_prop_value(&self) -> SmallBox<dyn AttrValue, S1> {
         smallbox!(self.clone())
     }
     fn default_value() -> Self {
@@ -922,8 +932,8 @@ impl PropValue for AlignSelf {
     }
 }
 
-impl PropValue for JustifySelf {
-    fn clone_prop_value(&self) -> SmallBox<dyn PropValue, S1> {
+impl AttrValue for JustifySelf {
+    fn clone_prop_value(&self) -> SmallBox<dyn AttrValue, S1> {
         smallbox!(self.clone())
     }
     fn default_value() -> Self {
@@ -931,8 +941,8 @@ impl PropValue for JustifySelf {
     }
 }
 
-impl PropValue for AlignContent {
-    fn clone_prop_value(&self) -> SmallBox<dyn PropValue, S1> {
+impl AttrValue for AlignContent {
+    fn clone_prop_value(&self) -> SmallBox<dyn AttrValue, S1> {
         smallbox!(self.clone())
     }
     fn default_value() -> Self {
@@ -940,8 +950,8 @@ impl PropValue for AlignContent {
     }
 }
 
-impl PropValue for JustifyContent {
-    fn clone_prop_value(&self) -> SmallBox<dyn PropValue, S1> {
+impl AttrValue for JustifyContent {
+    fn clone_prop_value(&self) -> SmallBox<dyn AttrValue, S1> {
         smallbox!(self.clone())
     }
     fn default_value() -> Self {
@@ -949,8 +959,8 @@ impl PropValue for JustifyContent {
     }
 }
 
-impl PropValue for FlexDirection {
-    fn clone_prop_value(&self) -> SmallBox<dyn PropValue, S1> {
+impl AttrValue for FlexDirection {
+    fn clone_prop_value(&self) -> SmallBox<dyn AttrValue, S1> {
         smallbox!(self.clone())
     }
     fn default_value() -> Self {
@@ -958,8 +968,8 @@ impl PropValue for FlexDirection {
     }
 }
 
-impl PropValue for FlexWrap {
-    fn clone_prop_value(&self) -> SmallBox<dyn PropValue, S1> {
+impl AttrValue for FlexWrap {
+    fn clone_prop_value(&self) -> SmallBox<dyn AttrValue, S1> {
         smallbox!(self.clone())
     }
     fn default_value() -> Self {
@@ -967,8 +977,8 @@ impl PropValue for FlexWrap {
     }
 }
 
-impl PropValue for Visibility {
-    fn clone_prop_value(&self) -> SmallBox<dyn PropValue, S1> {
+impl AttrValue for Visibility {
+    fn clone_prop_value(&self) -> SmallBox<dyn AttrValue, S1> {
         smallbox!(self.clone())
     }
     fn default_value() -> Self {
@@ -976,8 +986,8 @@ impl PropValue for Visibility {
     }
 }
 
-impl PropValue for TextSections {
-    fn clone_prop_value(&self) -> SmallBox<dyn PropValue, S1> {
+impl AttrValue for TextSections {
+    fn clone_prop_value(&self) -> SmallBox<dyn AttrValue, S1> {
         smallbox!(self.clone())
     }
     fn default_value() -> Self {
@@ -985,8 +995,8 @@ impl PropValue for TextSections {
     }
 }
 
-impl PropValue for ZIndex {
-    fn clone_prop_value(&self) -> SmallBox<dyn PropValue, S1> {
+impl AttrValue for ZIndex {
+    fn clone_prop_value(&self) -> SmallBox<dyn AttrValue, S1> {
         smallbox!(self.clone())
     }
     fn default_value() -> Self {
@@ -994,8 +1004,8 @@ impl PropValue for ZIndex {
     }
 }
 
-impl PropValue for Transform {
-    fn clone_prop_value(&self) -> SmallBox<dyn PropValue, S1> {
+impl AttrValue for Transform {
+    fn clone_prop_value(&self) -> SmallBox<dyn AttrValue, S1> {
         smallbox!(self.clone())
     }
     fn default_value() -> Self {
@@ -1003,8 +1013,8 @@ impl PropValue for Transform {
     }
 }
 
-impl PropValue for Quat {
-    fn clone_prop_value(&self) -> SmallBox<dyn PropValue, S1> {
+impl AttrValue for Quat {
+    fn clone_prop_value(&self) -> SmallBox<dyn AttrValue, S1> {
         smallbox!(self.clone())
     }
     fn default_value() -> Self {
@@ -1012,8 +1022,8 @@ impl PropValue for Quat {
     }
 }
 
-impl PropValue for Vec3 {
-    fn clone_prop_value(&self) -> SmallBox<dyn PropValue, S1> {
+impl AttrValue for Vec3 {
+    fn clone_prop_value(&self) -> SmallBox<dyn AttrValue, S1> {
         smallbox!(self.clone())
     }
     fn default_value() -> Self {
@@ -1021,8 +1031,8 @@ impl PropValue for Vec3 {
     }
 }
 
-impl PropValue for BreakLineOn {
-    fn clone_prop_value(&self) -> SmallBox<dyn PropValue, S1> {
+impl AttrValue for BreakLineOn {
+    fn clone_prop_value(&self) -> SmallBox<dyn AttrValue, S1> {
         smallbox!(self.clone())
     }
     fn default_value() -> Self {
@@ -1030,8 +1040,8 @@ impl PropValue for BreakLineOn {
     }
 }
 
-impl PropValue for TextAlignment {
-    fn clone_prop_value(&self) -> SmallBox<dyn PropValue, S1> {
+impl AttrValue for TextAlignment {
+    fn clone_prop_value(&self) -> SmallBox<dyn AttrValue, S1> {
         smallbox!(self.clone())
     }
     fn default_value() -> Self {
@@ -1039,21 +1049,21 @@ impl PropValue for TextAlignment {
     }
 }
 
-impl PropValue for String {
-    fn clone_prop_value(&self) -> SmallBox<dyn PropValue, S1> {
+impl AttrValue for String {
+    fn clone_prop_value(&self) -> SmallBox<dyn AttrValue, S1> {
         smallbox!(self.clone())
     }
 
     fn default_value() -> Self
-    where
-        Self: Sized,
+        where
+            Self: Sized,
     {
         <Self as Default>::default()
     }
 }
 
-impl<T: PropValue + TypePath + FromReflect + Clone> PropValue for Option<T> {
-    fn clone_prop_value(&self) -> SmallBox<dyn PropValue, S1> {
+impl<T: AttrValue + TypePath + FromReflect + Clone> AttrValue for Option<T> {
+    fn clone_prop_value(&self) -> SmallBox<dyn AttrValue, S1> {
         smallbox!(match self {
             None => None,
             Some(n) => {
@@ -1063,21 +1073,21 @@ impl<T: PropValue + TypePath + FromReflect + Clone> PropValue for Option<T> {
     }
 
     fn default_value() -> Self
-    where
-        Self: Sized,
+        where
+            Self: Sized,
     {
         <Self as Default>::default()
     }
 }
 
-impl<T: Asset> PropValue for Handle<T> {
-    fn clone_prop_value(&self) -> SmallBox<dyn PropValue, S1> {
+impl<T: Asset> AttrValue for Handle<T> {
+    fn clone_prop_value(&self) -> SmallBox<dyn AttrValue, S1> {
         smallbox!(self.clone())
     }
 
     fn default_value() -> Self
-    where
-        Self: Sized,
+        where
+            Self: Sized,
     {
         <Self as Default>::default()
     }
