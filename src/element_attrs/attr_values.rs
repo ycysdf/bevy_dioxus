@@ -335,6 +335,12 @@ impl From<DomAttributeValue> for Option<Val> {
             DomAttributeValue::Text(value) => Some(parse_size_val(&value)),
             DomAttributeValue::Int(value) => Some(Val::Px(value as f32)),
             DomAttributeValue::Float(value) => Some(Val::Px(value as f32)),
+            DomAttributeValue::Any(value) => {
+                let Ok(value) = <dyn Reflect>::downcast::<Val>(value) else {
+                    return None;
+                };
+                Some(*value)
+            }
             _ => None,
         }
     }
