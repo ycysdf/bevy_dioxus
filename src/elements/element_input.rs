@@ -183,7 +183,7 @@ impl TextStyledElementType for input {
 }
 
 pub mod input_attrs {
-    use crate::COMMON_PROPS_COUNT;
+    use crate::ATTR_COUNT;
 
     use super::*;
 
@@ -193,7 +193,7 @@ pub mod input_attrs {
         type Value = String;
 
         const TAG_NAME: &'static str = stringify!(value);
-        const INDEX: u8 = COMMON_PROPS_COUNT + 0;
+        const INDEX: u8 = ATTR_COUNT + 0;
 
         fn set_value(&self, context: &mut SetAttrValueContext, p_value: impl Into<Self::Value>) {
             if let Some(mut t) = context.entity_ref.get_mut::<CosmicText>() {

@@ -10,10 +10,10 @@ use bevy::reflect::Reflect;
 use bevy::text::{Text, TextLayoutInfo};
 use bevy::ui::widget::TextFlags;
 
-use text_props::*;
+use text_attrs::*;
 
 use crate::{
-    element_attrs::COMMON_PROPS_COUNT,
+    element_attrs::ATTR_COUNT,
     ElementType,
     impl_element_type_base,
     prelude::{Entity, World},
@@ -118,7 +118,7 @@ impl TextStyledElementType for text {
     }
 }
 
-pub mod text_props {
+pub mod text_attrs {
     use super::*;
 
     pub struct sections;
@@ -128,7 +128,7 @@ pub mod text_props {
 
         const TAG_NAME: &'static str = "sections";
 
-        const INDEX: u8 = COMMON_PROPS_COUNT + 0;
+        const INDEX: u8 = ATTR_COUNT + 0;
         fn set_value(&self, context: &mut SetAttrValueContext, value: impl Into<Self::Value>) {
             if let Some(mut t) = context.entity_ref.get_mut::<Text>() {
                 t.sections = value.into().0;

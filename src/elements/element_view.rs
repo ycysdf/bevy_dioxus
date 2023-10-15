@@ -5,8 +5,8 @@ use bevy::ecs::world::EntityMut;
 use bevy::prelude::NodeBundle;
 use bevy::reflect::Reflect;
 
-use crate::{ElementType, impl_element_type_base};
 use crate::prelude::World;
+use crate::{impl_element_type_base, ElementType};
 
 impl_element_type_base!(
     #[derive(Reflect, Debug, Clone, Copy)]

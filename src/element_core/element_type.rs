@@ -6,8 +6,8 @@ use bevy::prelude::World;
 use bevy::reflect::{Reflect, ReflectFromPtr};
 
 use crate::element_core::ElementAttrUntyped;
-use crate::prelude::{AppTypeRegistry, Entity, warn};
-use crate::ReflectExtension;
+use crate::prelude::{warn, AppTypeRegistry, Entity};
+use crate::{ElementCompositeAttrUntyped, ReflectExtension};
 
 pub trait ElementTypeUnTyped: Reflect {
     fn name(&self) -> &'static str;
@@ -16,7 +16,9 @@ pub trait ElementTypeUnTyped: Reflect {
     fn attrs(&self) -> &'static [&'static dyn ElementAttrUntyped];
 
     fn attr(&self, attr_name: &str) -> Option<&'static dyn ElementAttrUntyped>;
-    fn prop_by_index(&self, index: u8) -> &'static dyn ElementAttrUntyped {
+    fn composite_attrs(&self) -> &'static [&'static dyn ElementCompositeAttrUntyped];
+    fn composite_attr(&self, attr_name: &str) -> Option<&'static dyn ElementCompositeAttrUntyped>;
+    fn attr_by_index(&self, index: u8) -> &'static dyn ElementAttrUntyped {
         self.attrs()[index as usize]
     }
     fn spawn<'w>(&self, world: &'w mut World) -> EntityMut<'w>;
@@ -43,13 +45,24 @@ impl<T: ElementTypeBase + ElementType> ElementTypeUnTyped for T {
 
     #[inline]
     fn attrs(&self) -> &'static [&'static dyn ElementAttrUntyped] {
-        T::PROPS
+        T::ATTRS
     }
 
     #[inline]
     fn attr(&self, attr_name: &str) -> Option<&'static dyn ElementAttrUntyped> {
         T::attr(attr_name)
     }
+
+    #[inline]
+    fn composite_attrs(&self) -> &'static [&'static dyn ElementCompositeAttrUntyped] {
+        T::COMPOSITE_ATTRS
+    }
+
+    #[inline]
+    fn composite_attr(&self, attr_name: &str) -> Option<&'static dyn ElementCompositeAttrUntyped> {
+        T::composite_attr(attr_name)
+    }
+
     #[inline]
     fn spawn<'w>(&self, world: &'w mut World) -> EntityMut<'w> {
         self.spawn(world)
@@ -77,11 +90,16 @@ impl<T: ElementTypeBase + ElementType> ElementTypeUnTyped for T {
 pub trait ElementTypeBase: Reflect {
     const TAG_NAME: &'static str;
     const NAME_SPACE: Option<&'static str> = None;
-    const PROPS: &'static [&'static dyn ElementAttrUntyped];
+    const ATTRS: &'static [&'static dyn ElementAttrUntyped];
+    const COMPOSITE_ATTRS: &'static [&'static dyn ElementCompositeAttrUntyped];
     const NAME: &'static str = Self::TAG_NAME;
 
     fn attr(attr_name: &str) -> Option<&'static dyn ElementAttrUntyped> {
-        Self::PROPS.iter().find(|n| n.name() == attr_name).copied()
+        Self::ATTRS.iter().find(|n| n.name() == attr_name).copied()
+    }
+
+    fn composite_attr(attr_name: &str) -> Option<&'static dyn ElementCompositeAttrUntyped> {
+        Self::COMPOSITE_ATTRS.iter().find(|n| n.name() == attr_name).copied()
     }
 }
 

@@ -4,21 +4,23 @@ use bevy::core::Name;
 use bevy::ecs::system::Command;
 use bevy::hierarchy::BuildWorldChildren;
 use bevy::prelude::{
-    AppTypeRegistry, Color, default, DespawnRecursiveExt, Entity, error, Mut, NodeBundle, Reflect,
+    default, error, AppTypeRegistry, Color, DespawnRecursiveExt, Entity, Mut, NodeBundle, Reflect,
     SpatialBundle, Text, TextBundle, TextSection, TextStyle, Visibility, World,
 };
 use dioxus::core::ElementId;
 
-use crate::{
-    ecs_fns, elements, ElementTypeBase, get_element_type, NodeTemplate, SetAttrValueContext,
-    TemplateWorld,
-};
 use crate::dom_template::{DomTemplate, DomTemplateAttribute, DomTemplateNode};
 use crate::ecs_fns::{insert_after, insert_before, WorldExtension};
 use crate::entity_extra_data::{EntitiesExtraData, EntityExtraData};
-use crate::prelude::dioxus_elements::events::{listen_dom_event_by_name, unlisten_dom_event_by_name};
+use crate::prelude::dioxus_elements::events::{
+    listen_dom_event_by_name, unlisten_dom_event_by_name,
+};
 use crate::prelude::warn;
 use crate::vdm_data::{TemplateData, VDomData};
+use crate::{
+    ecs_fns, elements, get_element_type, ElementTypeBase, NodeTemplate, SetAttrValueContext,
+    TemplateWorld,
+};
 
 pub fn create_template_node(
     template_world: &mut World,
@@ -448,7 +450,7 @@ impl Command for CreateTextNode {
                     },
                 ),
                 ..default()
-            }, ));
+            },));
             let text_entity = text_entity_ref.id();
             vdom_data.element_id_to_entity.insert(self.id, text_entity);
             vdom_data.loaded_node_stack.push(text_entity);
@@ -491,6 +493,44 @@ pub enum DomAttributeValue {
     None,
 }
 
+impl From<DomAttributeValue> for Option<f64> {
+    fn from(value: DomAttributeValue) -> Self {
+        match value {
+            DomAttributeValue::Float(value) => Some(value),
+            _ => None,
+        }
+    }
+}
+
+impl From<DomAttributeValue> for Option<bool> {
+    fn from(value: DomAttributeValue) -> Self {
+        match value {
+            DomAttributeValue::Bool(value) => Some(value),
+            _ => None,
+        }
+    }
+}
+
+impl From<DomAttributeValue> for Option<i64> {
+    fn from(value: DomAttributeValue) -> Self {
+        match value {
+            DomAttributeValue::Int(value) => Some(value),
+            _ => None,
+        }
+    }
+}
+
+impl From<DomAttributeValue> for Option<f32> {
+    fn from(value: DomAttributeValue) -> Self {
+        match value {
+            DomAttributeValue::Text(value) => Some(value.parse().unwrap_or_default()),
+            DomAttributeValue::Int(value) => Some(value as f32),
+            DomAttributeValue::Float(value) => Some(value as f32),
+            _ => None,
+        }
+    }
+}
+
 #[derive(Default)]
 pub struct SetAttribute {
     pub name: &'static str,
@@ -503,28 +543,59 @@ impl Command for SetAttribute {
         let vdom_data = world.resource::<VDomData>();
         let type_registry = world.resource::<AppTypeRegistry>().clone();
         let entity = vdom_data.element_id_to_entity[&self.id];
+
+        // todo: handle set attr value error
+
         world.resource_scope(|world, mut entities_extra_data: Mut<EntitiesExtraData>| {
             let Some(entity_extra_data) = entities_extra_data.get_mut(&entity) else {
                 error!("No Found EntityExtraData by {:#?}", entity);
                 return;
             };
             let schema_type = get_element_type(entity_extra_data.schema_name);
-            let Some(attr) = schema_type.attr(self.name) else {
-                error!("No Found Attr by {:#?}", self.name);
-                return;
-            };
-            entity_extra_data
-                .set_attr(attr.index(), !matches!(self.value, DomAttributeValue::None));
-            let mut entity_ref = world.entity_mut(entity);
+            match schema_type.attr(self.name) {
+                Some(attr) => {
+                    entity_extra_data
+                        .set_attr(attr.index(), !matches!(self.value, DomAttributeValue::None));
 
-            attr.set_by_attr_value(
-                &mut SetAttrValueContext {
-                    entity_ref: &mut entity_ref,
-                    entities_extra_data: entities_extra_data.deref_mut(),
-                    type_registry,
-                },
-                self.value,
-            );
+                    let mut entity_ref = world.entity_mut(entity);
+
+                    attr.set_by_attr_value(
+                        &mut SetAttrValueContext {
+                            entity_ref: &mut entity_ref,
+                            entities_extra_data: entities_extra_data.deref_mut(),
+                            type_registry,
+                        },
+                        self.value,
+                    );
+                }
+                None => {
+                    let Some(attr) = schema_type.composite_attr(self.name) else {
+                        error!("No Found Attr by {:#?}", self.name);
+                        return;
+                    };
+                    let value_is_some = !matches!(self.value, DomAttributeValue::None);
+                    let mut entity_ref = world.entity_mut(entity);
+
+                    let Some(attrs) = attr.set_by_attr_value_and_get_attrs(
+                        &mut SetAttrValueContext {
+                            entity_ref: &mut entity_ref,
+                            entities_extra_data: entities_extra_data.deref_mut(),
+                            type_registry,
+                        },
+                        self.value,
+                    ) else {
+                        return;
+                    };
+
+                    let Some(entity_extra_data) = entities_extra_data.get_mut(&entity) else {
+                        error!("No Found EntityExtraData by {:#?}", entity);
+                        return;
+                    };
+                    for attr in attrs {
+                        entity_extra_data.set_attr(attr.index(), value_is_some);
+                    }
+                }
+            }
         });
     }
 }

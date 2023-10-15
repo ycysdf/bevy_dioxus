@@ -50,7 +50,7 @@ impl EntityExtraData {
     }
 
     pub fn is_set_attr(&self, attr_index: AttrIndex) -> bool {
-        self.attr_is_set & (!(1 << attr_index)) != self.attr_is_set
+        (self.attr_is_set >> attr_index) & 1 == 1
     }
 
     pub fn set_class_attr(&mut self, attr_index: AttrIndex, is_set: bool) {
@@ -67,7 +67,7 @@ impl EntityExtraData {
     }
 
     pub fn is_set_class_attr(&self, attr_index: AttrIndex) -> bool {
-        self.class_attr_is_set & (!(1 << attr_index)) != self.class_attr_is_set
+        (self.class_attr_is_set >> attr_index) & 1 == 1
     }
 
     pub fn iter_set_class_attr_indices(&self) -> impl Iterator<Item = AttrIndex> + 'static {
@@ -76,7 +76,10 @@ impl EntityExtraData {
             .filter(move |i| (num >> i) & 1 == 1)
             .take(self.class_attr_set_count as usize)
     }
-    pub fn iter_class_attr_indices_exclude(&self, bits: AttrSetBits) -> impl Iterator<Item = AttrIndex> + 'static {
+    pub fn iter_class_attr_indices_exclude(
+        &self,
+        bits: AttrSetBits,
+    ) -> impl Iterator<Item = AttrIndex> + 'static {
         let num = self.class_attr_is_set & !bits;
         get_all_prop_indecs().filter(move |i| (num >> i) & 1 == 1)
     }

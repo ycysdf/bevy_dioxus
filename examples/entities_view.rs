@@ -158,7 +158,7 @@ fn EntityItem(cx: Scope, data: EntityInfo, level: u8) -> Element {
     render! {
         view {
             name: "entity-item",
-            class: "p-2 bg-gray-200 hover:bg-gray-100 items-center",
+            class: "p-1 bg-gray-200 hover:bg-gray-100 active:bg-blue-200 items-center",
             for _ in (0..*level) {
                 view {
                     name: "entity-item-indicator",

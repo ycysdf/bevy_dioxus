@@ -9,13 +9,16 @@ use smallvec::{smallvec, SmallVec};
 
 pub use colors::*;
 
-use crate::entity_extra_data::get_all_prop_indecs;
-use crate::{ElementAttrUntyped, ElementTypeUnTyped, element_attrs, SetAttrValueContext};
-use crate::{smallbox, SmallBox};
-use crate::{OptionalOverflow, Texture, try_get_element_type, UiOptionalRect};
 use crate::element_core::AttrValue;
-use crate::prelude::{TextAlignment, warn};
+use crate::entity_extra_data::get_all_prop_indecs;
+use crate::prelude::{warn, TextAlignment};
 use crate::smallbox::S1;
+use crate::{
+    element_attrs, from_str, get_element_type, ElementAttrUntyped, ElementTypeUnTyped,
+    SetAttrValueContext,
+};
+use crate::{smallbox, SmallBox};
+use crate::{try_get_element_type, OptionalOverflow, Texture, UiOptionalRect};
 
 mod colors;
 
@@ -29,7 +32,7 @@ impl Clone for TailwindClassItem {
     fn clone(&self) -> Self {
         let mut r = SmallVec::with_capacity(self.0.capacity());
         for (prop, value) in self.0.iter() {
-            r.push((*prop as _, value.deref().clone_prop_value()));
+            r.push((*prop as _, value.deref().clone_att_value()));
         }
         TailwindClassItem(r, Clone::clone(&self.1))
     }
@@ -89,13 +92,16 @@ pub fn handle_classes(context: &mut SetAttrValueContext, classes: &str) {
                     set_bits |= (1 << prop.index());
                 }
                 (Interaction::None, _) => {
+                    /*
                     if let Some(previous_value) = normal_props_map.remove(&prop.index()) {
                         let mut value = value.clone();
-                        value.merge_value(previous_value);
+                        value.merge_dyn_value(previous_value);
                         normal_props_map.insert(prop.index(), value);
                     } else {
                         normal_props_map.insert(prop.index(), value.clone());
                     }
+                    */
+                    normal_props_map.insert(prop.index(), value.clone());
                     prop.set_dyn_value_in_class(context, value);
                     set_bits |= (1 << prop.index());
                 }
@@ -109,13 +115,12 @@ pub fn handle_classes(context: &mut SetAttrValueContext, classes: &str) {
         context.entity_ref.remove::<InteractionClass>();
     }
     let entity_extra_data = context.entity_extra_data();
-    let schema_type: &dyn ElementTypeUnTyped =
-        try_get_element_type(entity_extra_data.schema_name).unwrap();
+    let schema_type: &dyn ElementTypeUnTyped = get_element_type(entity_extra_data.schema_name);
 
     entity_extra_data.interaction_classes = interaction_classes;
     entity_extra_data.normal_props_map = normal_props_map;
     for prop_index in entity_extra_data.iter_class_attr_indices_exclude(set_bits) {
-        let prop = schema_type.prop_by_index(prop_index);
+        let prop = schema_type.attr_by_index(prop_index);
         prop.set_to_default_value(context);
     }
 }
@@ -135,10 +140,8 @@ pub fn handle_interaction_classes(context: &mut SetAttrValueContext) {
             match (item.1, interaction) {
                 (Interaction::Pressed, Interaction::Pressed)
                 | (Interaction::Hovered, Interaction::Hovered | Interaction::Pressed) => {
-                    if set_bits & !(1 << prop.index()) == set_bits {
-                        prop.set_dyn_value_in_class(context, value);
-                        set_bits |= (1 << prop.index());
-                    }
+                    prop.set_dyn_value_in_class(context, value);
+                    set_bits |= (1 << prop.index());
                 }
                 (Interaction::None, _) => {
                     warn!("This is not a interaction class!")
@@ -150,11 +153,11 @@ pub fn handle_interaction_classes(context: &mut SetAttrValueContext) {
         }
     }
     let schema_type: &dyn ElementTypeUnTyped =
-        try_get_element_type(context.entity_extra_data().schema_name).unwrap();
+        get_element_type(context.entity_extra_data().schema_name);
 
     let num = unset_bits & (!set_bits) & (!context.entity_extra_data().attr_is_set);
     for prop_index in get_all_prop_indecs().filter(move |i| (num >> i) & 1 == 1) {
-        let prop = schema_type.prop_by_index(prop_index);
+        let prop = schema_type.attr_by_index(prop_index);
         if let Some(value) = context
             .entity_extra_data()
             .normal_props_map
@@ -292,7 +295,10 @@ fn parse_class_inner<'a>(
             } else if let Some(class) = class.strip_prefix("top-") {
                 smallvec![(&element_attrs::top as _, smallbox!(parse_size_val(class))),]
             } else if let Some(class) = class.strip_prefix("bottom-") {
-                smallvec![(&element_attrs::bottom as _, smallbox!(parse_size_val(class))),]
+                smallvec![(
+                    &element_attrs::bottom as _,
+                    smallbox!(parse_size_val(class))
+                ),]
             } else if let Some(class) = class.strip_prefix("flex-") {
                 if let Some(val) = (match class {
                     "wrap" => Some(FlexWrap::Wrap),
@@ -307,7 +313,10 @@ fn parse_class_inner<'a>(
             } else if let Some(class) = class.strip_prefix("w-") {
                 smallvec![(&element_attrs::width as _, smallbox!(parse_size_val(class))),]
             } else if let Some(class) = class.strip_prefix("h-") {
-                smallvec![(&element_attrs::height as _, smallbox!(parse_size_val(class))),]
+                smallvec![(
+                    &element_attrs::height as _,
+                    smallbox!(parse_size_val(class))
+                ),]
             } else if let Some(class) = class.strip_prefix("min-w-") {
                 smallvec![(
                     &element_attrs::min_width as _,
@@ -367,81 +376,76 @@ fn parse_class_inner<'a>(
                 }
             } else if let Some(class) = class.strip_prefix("p-") {
                 let padding = parse_size_val(class);
-                smallvec![(
-                    &element_attrs::padding as _,
-                    smallbox!(UiOptionalRect::all(padding))
-                ),]
+                smallvec![
+                    (&element_attrs::padding_left as _, smallbox!(padding)),
+                    (&element_attrs::padding_right as _, smallbox!(padding)),
+                    (&element_attrs::padding_top as _, smallbox!(padding)),
+                    (&element_attrs::padding_bottom as _, smallbox!(padding)),
+                ]
             } else if let Some(class) = class.strip_prefix("py-") {
-                smallvec![(
-                    &element_attrs::padding as _,
-                    smallbox!(UiOptionalRect::vertical(parse_size_val(class)))
-                ),]
+                let padding = parse_size_val(class);
+                smallvec![
+                    (&element_attrs::padding_top as _, smallbox!(padding)),
+                    (&element_attrs::padding_bottom as _, smallbox!(padding)),
+                ]
             } else if let Some(class) = class.strip_prefix("px-") {
-                smallvec![(
-                    &element_attrs::padding as _,
-                    smallbox!(UiOptionalRect::horizontal(parse_size_val(class)))
-                ),]
+                let padding = parse_size_val(class);
+                smallvec![
+                    (&element_attrs::padding_left as _, smallbox!(padding)),
+                    (&element_attrs::padding_right as _, smallbox!(padding)),
+                ]
             } else if let Some(class) = class.strip_prefix("pt-") {
-                smallvec![(
-                    &element_attrs::padding as _,
-                    smallbox!(UiOptionalRect::top(parse_size_val(class)))
-                ),]
+                let padding = parse_size_val(class);
+                smallvec![(&element_attrs::padding_top as _, smallbox!(padding)),]
             } else if let Some(class) = class.strip_prefix("pb-") {
-                smallvec![(
-                    &element_attrs::padding as _,
-                    smallbox!(UiOptionalRect::bottom(parse_size_val(class)))
-                ),]
+                let padding = parse_size_val(class);
+                smallvec![(&element_attrs::padding_bottom as _, smallbox!(padding)),]
             } else if let Some(class) = class.strip_prefix("pl-") {
-                smallvec![(
-                    &element_attrs::padding as _,
-                    smallbox!(UiOptionalRect::left(parse_size_val(class)))
-                ),]
+                let padding = parse_size_val(class);
+                smallvec![(&element_attrs::padding_left as _, smallbox!(padding)),]
             } else if let Some(class) = class.strip_prefix("pr-") {
-                smallvec![(
-                    &element_attrs::padding as _,
-                    smallbox!(UiOptionalRect::right(parse_size_val(class)))
-                ),]
+                let padding = parse_size_val(class);
+                smallvec![(&element_attrs::padding_right as _, smallbox!(padding)),]
             } else if let Some(class) = class.strip_prefix("m-") {
-                smallvec![(
-                    &element_attrs::margin as _,
-                    smallbox!(UiOptionalRect::all(parse_size_val(class)))
-                ),]
+                let margin = parse_size_val(class);
+                smallvec![
+                    (&element_attrs::margin_left as _, smallbox!(margin)),
+                    (&element_attrs::margin_right as _, smallbox!(margin)),
+                    (&element_attrs::margin_top as _, smallbox!(margin)),
+                    (&element_attrs::margin_bottom as _, smallbox!(margin)),
+                ]
             } else if let Some(class) = class.strip_prefix("my-") {
-                smallvec![(
-                    &element_attrs::margin as _,
-                    smallbox!(UiOptionalRect::vertical(parse_size_val(class)))
-                ),]
+                let margin = parse_size_val(class);
+                smallvec![
+                    (&element_attrs::margin_top as _, smallbox!(margin)),
+                    (&element_attrs::margin_bottom as _, smallbox!(margin)),
+                ]
             } else if let Some(class) = class.strip_prefix("mx-") {
-                smallvec![(
-                    &element_attrs::margin as _,
-                    smallbox!(UiOptionalRect::horizontal(parse_size_val(class)))
-                ),]
+                let margin = parse_size_val(class);
+                smallvec![
+                    (&element_attrs::margin_left as _, smallbox!(margin)),
+                    (&element_attrs::margin_right as _, smallbox!(margin)),
+                ]
             } else if let Some(class) = class.strip_prefix("mt-") {
-                smallvec![(
-                    &element_attrs::margin as _,
-                    smallbox!(UiOptionalRect::top(parse_size_val(class)))
-                ),]
+                let margin = parse_size_val(class);
+                smallvec![(&element_attrs::margin_top as _, smallbox!(margin)),]
             } else if let Some(class) = class.strip_prefix("mb-") {
-                smallvec![(
-                    &element_attrs::margin as _,
-                    smallbox!(UiOptionalRect::bottom(parse_size_val(class)))
-                ),]
+                let margin = parse_size_val(class);
+                smallvec![(&element_attrs::margin_bottom as _, smallbox!(margin)),]
             } else if let Some(class) = class.strip_prefix("ml-") {
-                smallvec![(
-                    &element_attrs::margin as _,
-                    smallbox!(UiOptionalRect::left(parse_size_val(class)))
-                ),]
+                let margin = parse_size_val(class);
+                smallvec![(&element_attrs::margin_left as _, smallbox!(margin)),]
             } else if let Some(class) = class.strip_prefix("mr-") {
-                smallvec![(
-                    &element_attrs::margin as _,
-                    smallbox!(UiOptionalRect::right(parse_size_val(class)))
-                ),]
+                let margin = parse_size_val(class);
+                smallvec![(&element_attrs::margin_right as _, smallbox!(margin)),]
             } else if let Some(class) = class.strip_prefix("border") {
                 if class == "" {
-                    smallvec![(
-                        &element_attrs::border as _,
-                        smallbox!(UiOptionalRect::all(Val::Px(1.0)))
-                    ),]
+                    smallvec![
+                        (&element_attrs::border_left as _, smallbox!(Val::Px(1.))),
+                        (&element_attrs::border_right as _, smallbox!(Val::Px(1.))),
+                        (&element_attrs::border_top as _, smallbox!(Val::Px(1.))),
+                        (&element_attrs::border_bottom as _, smallbox!(Val::Px(1.))),
+                    ]
                 } else if let Some(class) = class.strip_prefix("-") {
                     if let Some(color) = parse_color(class) {
                         smallvec![(
@@ -449,30 +453,33 @@ fn parse_class_inner<'a>(
                             smallbox!(BorderColor(color))
                         ),]
                     } else if let Ok(size) = class.parse::<f32>() {
-                        smallvec![(
-                            &element_attrs::border as _,
-                            smallbox!(UiOptionalRect::all(Val::Px(size as f32)))
-                        ),]
-                    } else if let Some(class) = class.strip_prefix("t") {
-                        smallvec![(
-                            &element_attrs::border as _,
-                            smallbox!(parse_border_size(class, UiOptionalRect::top))
-                        ),]
-                    } else if let Some(class) = class.strip_prefix("r") {
-                        smallvec![(
-                            &element_attrs::border as _,
-                            smallbox!(parse_border_size(class, UiOptionalRect::right))
-                        ),]
-                    } else if let Some(class) = class.strip_prefix("b") {
-                        smallvec![(
-                            &element_attrs::border as _,
-                            smallbox!(parse_border_size(class, UiOptionalRect::bottom))
-                        ),]
+                        let value = Val::Px(size as f32);
+                        smallvec![
+                            (&element_attrs::border_left as _, smallbox!(value)),
+                            (&element_attrs::border_right as _, smallbox!(value)),
+                            (&element_attrs::border_top as _, smallbox!(value)),
+                            (&element_attrs::border_bottom as _, smallbox!(value)),
+                        ]
                     } else if let Some(class) = class.strip_prefix("l") {
-                        smallvec![(
-                            &element_attrs::border as _,
-                            smallbox!(parse_border_size(class, UiOptionalRect::left))
-                        ),]
+                        let Some(value) = parse_border_size(class) else {
+                            return default();
+                        };
+                        smallvec![(&element_attrs::border_left as _, smallbox!(value)),]
+                    } else if let Some(class) = class.strip_prefix("r") {
+                        let Some(value) = parse_border_size(class) else {
+                            return default();
+                        };
+                        smallvec![(&element_attrs::border_right as _, smallbox!(value)),]
+                    } else if let Some(class) = class.strip_prefix("t") {
+                        let Some(value) = parse_border_size(class) else {
+                            return default();
+                        };
+                        smallvec![(&element_attrs::border_top as _, smallbox!(value)),]
+                    } else if let Some(class) = class.strip_prefix("b") {
+                        let Some(value) = parse_border_size(class) else {
+                            return default();
+                        };
+                        smallvec![(&element_attrs::border_bottom as _, smallbox!(value)),]
                     } else {
                         default()
                     }
@@ -480,41 +487,17 @@ fn parse_class_inner<'a>(
                     default()
                 }
             } else if let Some(class) = class.strip_prefix("overflow-") {
-                smallvec![(
-                    &element_attrs::border as _,
-                    smallbox!(match class {
-                        "clip" => OptionalOverflow {
-                            x: Some(OverflowAxis::Clip),
-                            y: Some(OverflowAxis::Clip),
-                        },
-                        _ => OptionalOverflow {
-                            x: Some(OverflowAxis::Visible),
-                            y: Some(OverflowAxis::Visible),
-                        },
-                    })
-                ),]
+                let value = from_str(class).unwrap_or(OverflowAxis::Visible);
+                smallvec![
+                    (&element_attrs::overflow_x as _, smallbox!(value)),
+                    (&element_attrs::overflow_y as _, smallbox!(value))
+                ]
             } else if let Some(class) = class.strip_prefix("overflow-x-") {
-                smallvec![(
-                    &element_attrs::border as _,
-                    smallbox!(OptionalOverflow {
-                        x: Some(match class {
-                            "clip" => OverflowAxis::Clip,
-                            _ => OverflowAxis::Visible,
-                        }),
-                        ..default()
-                    })
-                ),]
+                let value = from_str(class).unwrap_or(OverflowAxis::Visible);
+                smallvec![(&element_attrs::overflow_x as _, smallbox!(value)),]
             } else if let Some(class) = class.strip_prefix("overflow-y-") {
-                smallvec![(
-                    &element_attrs::border as _,
-                    smallbox!(OptionalOverflow {
-                        y: Some(match class {
-                            "clip" => OverflowAxis::Clip,
-                            _ => OverflowAxis::Visible,
-                        }),
-                        ..default()
-                    })
-                ),]
+                let value = from_str(class).unwrap_or(OverflowAxis::Visible);
+                smallvec![(&element_attrs::overflow_y as _, smallbox!(value))]
             } else {
                 default()
             }
@@ -532,12 +515,12 @@ pub fn parse_class<'a>(class: &'a str) -> TailwindClassItem {
     }
 }
 
-fn parse_border_size(class: &str, f: fn(val: Val) -> UiOptionalRect) -> UiOptionalRect {
+fn parse_border_size(class: &str) -> Option<Val> {
     if class == "" {
-        f(Val::Px(1.0))
+        Some(Val::Px(1.0))
     } else if let Some(class) = class.strip_prefix("-") {
-        f(parse_size_val(class))
+        Some(parse_size_val(class))
     } else {
-        UiOptionalRect::default_value()
+        None
     }
 }

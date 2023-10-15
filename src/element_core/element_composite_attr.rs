@@ -1,5 +1,23 @@
-use crate::{AttrValue, DioxusAttributeDescription};
+use crate::smallbox::S1;
+use crate::{element_attrs, OptionalTransform, SmallBox};
+use bevy::prelude::Transform;
+use bevy::ui::UiRect;
+use smallvec::SmallVec;
+
 use crate::dom_commands::DomAttributeValue;
+use crate::{
+    AttrValue, DioxusAttributeDescription, ElementAttrUntyped, SetAttrValueContext, StyleEntityExt,
+    UiOptionalRect,
+};
+
+pub trait OptionalValue {
+    fn get_count(&self) -> u8 {
+        1
+    }
+    fn get_valid_indices_bits(&self) -> u8 {
+        1
+    }
+}
 
 pub trait ElementCompositeAttrUntyped: Send + Sync {
     fn name(&self) -> &'static str;
@@ -7,11 +25,23 @@ pub trait ElementCompositeAttrUntyped: Send + Sync {
     fn volatile(&self) -> bool;
 
     fn attribute_description(&self) -> DioxusAttributeDescription;
+    fn set_by_attr_value(&self, context: &mut SetAttrValueContext, value: DomAttributeValue);
+    fn set_dyn_value(&self, context: &mut SetAttrValueContext, value: SmallBox<dyn AttrValue, S1>);
+
+    fn get_attrs(
+        &self,
+        value: &dyn OptionalValue,
+    ) -> SmallVec<[&'static dyn ElementAttrUntyped; 4]>;
+    fn set_by_attr_value_and_get_attrs(
+        &self,
+        context: &mut SetAttrValueContext,
+        value: DomAttributeValue,
+    ) -> Option<SmallVec<[&'static dyn ElementAttrUntyped; 4]>>;
 }
 
 impl<T: ElementCompositeAttr> ElementCompositeAttrUntyped for T
-    where
-        Option<T::Value>: From<DomAttributeValue>,
+where
+    Option<T::Value>: From<DomAttributeValue>,
 {
     #[inline]
     fn name(&self) -> &'static str {
@@ -32,13 +62,39 @@ impl<T: ElementCompositeAttr> ElementCompositeAttrUntyped for T
     fn attribute_description(&self) -> DioxusAttributeDescription {
         T::ATTRIBUTE_DESCRIPTION
     }
+
+    #[inline]
+    fn set_by_attr_value(&self, context: &mut SetAttrValueContext, value: DomAttributeValue) {
+        self.set_by_attr_value(context, value)
+    }
+
+    #[inline]
+    fn set_dyn_value(&self, context: &mut SetAttrValueContext, value: SmallBox<dyn AttrValue, S1>) {
+        self.set_dyn_value(context, value)
+    }
+
+    #[inline]
+    fn get_attrs(
+        &self,
+        value: &dyn OptionalValue,
+    ) -> SmallVec<[&'static dyn ElementAttrUntyped; 4]> {
+        self.get_attrs(value)
+    }
+
+    fn set_by_attr_value_and_get_attrs(
+        &self,
+        context: &mut SetAttrValueContext,
+        value: DomAttributeValue,
+    ) -> Option<SmallVec<[&'static dyn ElementAttrUntyped; 4]>> {
+        self.set_by_attr_value_and_get_attrs(context, value)
+    }
 }
 
 pub trait ElementCompositeAttr: Send + Sync
-    where
-        Option<Self::Value>: From<DomAttributeValue>,
+where
+    Option<Self::Value>: From<DomAttributeValue>,
 {
-    type Value: AttrValue + Sized;
+    type Value: AttrValue + OptionalValue + Sized;
 
     const TAG_NAME: &'static str;
     const NAME: &'static str = Self::TAG_NAME;
@@ -46,4 +102,52 @@ pub trait ElementCompositeAttr: Send + Sync
     const VOLATILE: bool = false;
     const ATTRIBUTE_DESCRIPTION: DioxusAttributeDescription =
         (Self::TAG_NAME, Self::NAME_SPACE, Self::VOLATILE);
+
+    const ATTRS: &'static [&'static dyn ElementAttrUntyped];
+
+    fn set_value(&self, context: &mut SetAttrValueContext, value: impl Into<Self::Value>);
+
+    #[inline]
+    fn set_by_attr_value(&self, context: &mut SetAttrValueContext, value: DomAttributeValue) {
+        let Some(value) = Into::<Option<Self::Value>>::into(value) else {
+            return;
+        };
+        self.set_value(context, value);
+    }
+    #[inline]
+    fn set_by_attr_value_and_get_attrs(
+        &self,
+        context: &mut SetAttrValueContext,
+        value: DomAttributeValue,
+    ) -> Option<SmallVec<[&'static dyn ElementAttrUntyped; 4]>> {
+        let Some(value) = Into::<Option<Self::Value>>::into(value) else {
+            return None;
+        };
+        let attrs = self.get_attrs(&value);
+        self.set_value(context, value);
+        Some(attrs)
+    }
+
+    #[inline]
+    fn set_dyn_value(&self, context: &mut SetAttrValueContext, value: SmallBox<dyn AttrValue, S1>) {
+        if let Ok(value) = value.downcast::<Self::Value>() {
+            self.set_value(context, value.into_inner());
+        }
+    }
+    fn get_attrs(
+        &self,
+        value: &dyn OptionalValue,
+    ) -> SmallVec<[&'static dyn ElementAttrUntyped; 4]> {
+        let valid_indices_bits = value.get_valid_indices_bits();
+        (0..value.get_count())
+            .into_iter()
+            .filter(|i| (i >> valid_indices_bits) & 1 == 1)
+            .map(|i| Self::ATTRS[i as usize])
+            .collect()
+    }
+
+    //    fn get_attr_and_values(
+    //        &self,
+    //        value: Self::Value,
+    //    ) -> SmallVec<[(&'static dyn ElementAttrUntyped, SmallBox<dyn AttrValue, S1>); 4]>;
 }

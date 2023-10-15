@@ -5,67 +5,105 @@ use bevy::reflect::TypePath;
 use bevy::text::BreakLineOn;
 use serde::{Deserialize, Serialize};
 
-use crate::{
-    ElementTypeUnTyped, get_element_type, ReflectTextStyledElementType, smallbox,
-    SmallBox,
-    TextStyledElementType,
-};
 use crate::dom_commands::DomAttributeValue;
 use crate::element_core::AttrValue;
 use crate::entity_extra_data::{EntitiesExtraData, EntityExtraData};
 use crate::smallbox::S1;
 use crate::tailwind::{parse_color, parse_size_val};
-
-pub struct SetAttrValueContext<'w, 'e> {
-    pub entities_extra_data: &'e mut EntitiesExtraData,
-    pub entity_ref: &'w mut EntityMut<'w>,
-    pub type_registry: AppTypeRegistry,
-}
-
-impl<'w, 'e> SetAttrValueContext<'w, 'e> {
-    pub fn entity_extra_data(&mut self) -> &mut EntityExtraData {
-        self.entities_extra_data
-            .get_mut(&self.entity_ref.id())
-            .unwrap()
-    }
-    pub fn entity_mut_scope<U>(
-        &mut self,
-        entity: Entity,
-        f: impl FnOnce(&mut EntityMut) -> U,
-    ) {
-        self.entity_ref
-            .world_scope(|world| f(&mut world.entity_mut(entity)));
-    }
-
-    pub fn element_type(&mut self) -> &'static dyn ElementTypeUnTyped {
-        get_element_type(self.entity_extra_data().schema_name)
-    }
-
-    pub fn get_text_element_type(&mut self) -> Option<&'static dyn TextStyledElementType> {
-        self.get_entity_text_element_type(self.entity_ref.id())
-    }
-
-    pub fn get_entity_text_element_type(
-        &mut self,
-        entity: Entity,
-    ) -> Option<&'static dyn TextStyledElementType> {
-        let schema_name = self
-            .entities_extra_data
-            .get(&entity)
-            .map(|n| n.schema_name)?;
-        let schema_type = get_element_type(schema_name);
-        let type_registry = self.type_registry.read();
-        type_registry
-            .get_type_data::<ReflectTextStyledElementType>(schema_type.type_id())
-            .and_then(|n| n.get(schema_type.as_reflect()))
-    }
-}
+use crate::{
+    from_str, get_element_type, impl_default_attr_value, smallbox, ElementTypeUnTyped, MyFromStr,
+    ReflectTextStyledElementType, SmallBox, TextStyledElementType,
+};
 
 #[derive(Copy, Clone, Default, PartialEq, Eq, Debug, Reflect, Serialize, Deserialize)]
 #[reflect(PartialEq, Serialize, Deserialize)]
 pub struct OptionalOverflow {
     pub x: Option<OverflowAxis>,
     pub y: Option<OverflowAxis>,
+}
+
+impl MyFromStr for OverflowAxis {
+    fn from_str(s: &str) -> Option<Self> {
+        match s {
+            "visible" => Some(OverflowAxis::Visible),
+            "clip" => Some(OverflowAxis::Clip),
+            _ => None,
+        }
+    }
+}
+
+macro_rules! downcast_chain {
+    ($value:ident,$type:ty,$($candidate_type:ty),*) => {
+        {
+            let r = <dyn Reflect>::downcast::<$type>($value).map(|n| *n);
+            $(
+                let r = r.or_else(|value| {
+                    <dyn Reflect>::downcast::<$candidate_type>(value)
+                                .map(|n| *n)
+                                .map(Into::into)
+                });
+                )*
+            r.ok()
+        }
+    };
+    ($type:ty) => {
+        downcast_chain!($type,);
+    }
+}
+
+macro_rules! impl_from_attr_value {
+    ($type:ty,$($candidate_type:ty),*) => {
+        impl From<DomAttributeValue> for Option<$type> {
+            fn from(value: DomAttributeValue) -> Self {
+                match value {
+                    DomAttributeValue::Text(value) => from_str(&value),
+                    DomAttributeValue::Any(value) => {
+                        downcast_chain!(value,$type,$($candidate_type)*)
+                    }
+                    _ => None,
+                }
+            }
+        }
+    };
+    ($type:ty) => {
+        impl_from_attr_value!($type,);
+    }
+}
+
+macro_rules! impl_from_attr_value_only_dyn {
+    ($type:ty,$($candidate_type:ty),*) => {
+        impl From<DomAttributeValue> for Option<$type> {
+            fn from(value: DomAttributeValue) -> Self {
+                match value {
+                    DomAttributeValue::Any(value) => {
+                        downcast_chain!(value,$type,$($candidate_type)*)
+                    }
+                    _ => None,
+                }
+            }
+        }
+    };
+    ($type:ty) => {
+        impl_from_attr_value_only_dyn!($type,);
+    }
+}
+
+#[derive(Debug, PartialEq, Default, Clone, Copy, Reflect)]
+#[reflect(Default, PartialEq)]
+pub struct OptionalTransform {
+    pub translation: Option<Vec3>,
+    pub rotation: Option<Quat>,
+    pub scale: Option<Vec3>,
+}
+
+impl OptionalTransform {
+    pub fn is_some(&self) -> [bool; 3] {
+        [
+            self.translation.is_some(),
+            self.rotation.is_some(),
+            self.scale.is_some(),
+        ]
+    }
 }
 
 #[derive(Copy, Clone, Default, PartialEq, Debug, Reflect)]
@@ -85,6 +123,9 @@ impl UiOptionalRect {
             top: Some(val),
             bottom: Some(val),
         }
+    }
+    pub fn values(&self) -> [&Option<Val>; 4] {
+        [&self.left, &self.right, &self.top, &self.bottom]
     }
     pub fn zero() -> Self {
         Self {
@@ -176,445 +217,6 @@ impl UiOptionalRect {
     }
 }
 
-#[derive(Reflect, Debug, Clone, PartialEq)]
-#[reflect(FromReflect)]
-pub enum Texture {
-    Color(Color),
-    Image {
-        image: Handle<Image>,
-        flip_x: bool,
-        flip_y: bool,
-        color: Color,
-    },
-    Atlas {
-        atlas: Handle<TextureAtlas>,
-        index: usize,
-        flip_x: bool,
-        flip_y: bool,
-        color: Color,
-    },
-}
-
-impl From<DomAttributeValue> for Option<Color> {
-    fn from(value: DomAttributeValue) -> Self {
-        match value {
-            DomAttributeValue::Text(value) => parse_color(&value),
-            _ => None,
-        }
-    }
-}
-
-impl From<DomAttributeValue> for Option<f64> {
-    fn from(value: DomAttributeValue) -> Self {
-        match value {
-            DomAttributeValue::Float(value) => Some(value),
-            _ => None,
-        }
-    }
-}
-
-impl From<DomAttributeValue> for Option<bool> {
-    fn from(value: DomAttributeValue) -> Self {
-        match value {
-            DomAttributeValue::Bool(value) => Some(value),
-            _ => None,
-        }
-    }
-}
-
-impl From<DomAttributeValue> for Option<i64> {
-    fn from(value: DomAttributeValue) -> Self {
-        match value {
-            DomAttributeValue::Int(value) => Some(value),
-            _ => None,
-        }
-    }
-}
-
-impl From<DomAttributeValue> for Option<Texture> {
-    fn from(value: DomAttributeValue) -> Self {
-        match value {
-            DomAttributeValue::Text(value) => parse_color(&value).map(Texture::Color),
-            DomAttributeValue::Any(value) => match <dyn Reflect>::downcast::<Texture>(value) {
-                Ok(value) => Some(*value),
-                Err(_) => None,
-            },
-            _ => None,
-        }
-    }
-}
-
-impl From<DomAttributeValue> for Option<f32> {
-    fn from(value: DomAttributeValue) -> Self {
-        match value {
-            DomAttributeValue::Text(value) => {
-                let value: f32 = value.parse().unwrap_or_default();
-                Some(value)
-            }
-            DomAttributeValue::Int(value) => Some(value as f32),
-            DomAttributeValue::Float(value) => Some(value as f32),
-            _ => None,
-        }
-    }
-}
-
-impl From<DomAttributeValue> for Option<Val> {
-    fn from(value: DomAttributeValue) -> Self {
-        match value {
-            DomAttributeValue::Text(value) => Some(parse_size_val(&value)),
-            DomAttributeValue::Int(value) => Some(Val::Px(value as f32)),
-            DomAttributeValue::Float(value) => Some(Val::Px(value as f32)),
-            _ => None,
-        }
-    }
-}
-
-impl From<DomAttributeValue> for Option<Option<f32>> {
-    fn from(value: DomAttributeValue) -> Self {
-        match value {
-            DomAttributeValue::Text(value) => {
-                let value: Option<f32> = value.parse::<f32>().ok();
-                Some(value)
-            }
-            DomAttributeValue::Int(value) => Some(Some(value as f32)),
-            DomAttributeValue::Float(value) => Some(Some(value as f32)),
-            _ => None,
-        }
-    }
-}
-/*
-impl<'a> IntoAttributeValue<'a> for Color {
-    fn into_value(self, bump: &'a Bump) -> AttributeValue<'a> {
-        let boxed: bumpalo::boxed::Box<'a, dyn AnyValue> =
-            unsafe { bumpalo::boxed::Box::from_raw(bump.alloc(self)) };
-
-        AttributeValue::Any(RefCell::new(Some(boxed)))
-    }
-}*/
-
-impl From<DomAttributeValue> for Option<BorderColor> {
-    fn from(value: DomAttributeValue) -> Self {
-        match value {
-            DomAttributeValue::Text(value) => parse_color(&value).map(BorderColor),
-            DomAttributeValue::Any(value) => match <dyn Reflect>::downcast::<Color>(value) {
-                Ok(value) => Some(BorderColor(*value)),
-                Err(value) => match <dyn Reflect>::downcast::<BorderColor>(value) {
-                    Ok(value) => Some(*value),
-                    Err(_) => None,
-                },
-            },
-            _ => None,
-        }
-    }
-}
-
-impl From<DomAttributeValue> for Option<UiOptionalRect> {
-    fn from(value: DomAttributeValue) -> Self {
-        match value {
-            DomAttributeValue::Text(value) => {
-                let mut split = value
-                    .split_whitespace()
-                    .map(parse_size_val)
-                    .collect::<Vec<_>>();
-                match split.len() {
-                    1 => Some(UiOptionalRect::all(split.pop().unwrap())),
-                    2 => {
-                        let first = split.pop().unwrap();
-                        let second = split.pop().unwrap();
-                        Some(UiOptionalRect::axes(second, first))
-                    }
-                    3 => {
-                        let first = split.pop().unwrap();
-                        let second = split.pop().unwrap();
-                        let three = split.pop().unwrap();
-                        Some(UiOptionalRect::new(second, second, first, three))
-                    }
-                    4 => {
-                        let first = split.pop().unwrap();
-                        let second = split.pop().unwrap();
-                        let three = split.pop().unwrap();
-                        let four = split.pop().unwrap();
-                        Some(UiOptionalRect::new(four, second, first, three))
-                    }
-                    _ => None,
-                }
-            }
-            DomAttributeValue::Float(value) => Some(UiOptionalRect::all(Val::Px(value as f32))),
-            DomAttributeValue::Int(value) => Some(UiOptionalRect::all(Val::Px(value as f32))),
-            DomAttributeValue::Any(value) => {
-                let Ok(value) = <dyn Reflect>::downcast::<UiOptionalRect>(value) else {
-                    return None;
-                };
-                Some(*value)
-            }
-            _ => None,
-        }
-    }
-}
-
-impl From<DomAttributeValue> for Option<Display> {
-    fn from(value: DomAttributeValue) -> Self {
-        match value {
-            DomAttributeValue::Text(value) => match value.as_str() {
-                "flex" => Some(Display::Flex),
-                "grid" => Some(Display::Grid),
-                "none" => Some(Display::None),
-                _ => None,
-            },
-            DomAttributeValue::Any(value) => {
-                <dyn Reflect>::downcast::<Display>(value).ok().map(|n| *n)
-            }
-            _ => None,
-        }
-    }
-}
-
-impl From<DomAttributeValue> for Option<PositionType> {
-    fn from(value: DomAttributeValue) -> Self {
-        match value {
-            DomAttributeValue::Text(value) => match value.as_str() {
-                "relative" => Some(PositionType::Relative),
-                "absolute" => Some(PositionType::Absolute),
-                _ => None,
-            },
-            DomAttributeValue::Any(value) => <dyn Reflect>::downcast::<PositionType>(value)
-                .ok()
-                .map(|n| *n),
-            _ => None,
-        }
-    }
-}
-
-impl From<DomAttributeValue> for Option<OptionalOverflow> {
-    fn from(value: DomAttributeValue) -> Self {
-        match value {
-            DomAttributeValue::Text(value) => match value.as_str() {
-                "visible" | "visible visible" => Some(OptionalOverflow {
-                    x: Some(OverflowAxis::Visible),
-                    y: Some(OverflowAxis::Visible),
-                }),
-                "visible clip" => Some(OptionalOverflow {
-                    x: Some(OverflowAxis::Clip),
-                    y: Some(OverflowAxis::Clip),
-                }),
-                "clip" | "clip clip" => Some(OptionalOverflow {
-                    x: Some(OverflowAxis::Clip),
-                    y: Some(OverflowAxis::Clip),
-                }),
-                "clip visible" => Some(OptionalOverflow {
-                    x: Some(OverflowAxis::Clip),
-                    y: Some(OverflowAxis::Clip),
-                }),
-                _ => None,
-            },
-            DomAttributeValue::Any(value) => <dyn Reflect>::downcast::<OptionalOverflow>(value)
-                .ok()
-                .map(|n| *n),
-            _ => None,
-        }
-    }
-}
-
-impl From<DomAttributeValue> for Option<Direction> {
-    fn from(value: DomAttributeValue) -> Self {
-        match value {
-            DomAttributeValue::Text(value) => match value.as_str() {
-                "ltr" => Some(Direction::LeftToRight),
-                "rtl" => Some(Direction::RightToLeft),
-                "inherit" => Some(Direction::Inherit),
-                _ => None,
-            },
-            DomAttributeValue::Any(value) => {
-                <dyn Reflect>::downcast::<Direction>(value).ok().map(|n| *n)
-            }
-            _ => None,
-        }
-    }
-}
-
-impl From<DomAttributeValue> for Option<AlignItems> {
-    fn from(value: DomAttributeValue) -> Self {
-        match value {
-            DomAttributeValue::Text(value) => match value.as_str() {
-                "default" => Some(AlignItems::Default),
-                "start" => Some(AlignItems::Start),
-                "end" => Some(AlignItems::End),
-                "flex-start" => Some(AlignItems::FlexStart),
-                "flex-end" => Some(AlignItems::FlexEnd),
-                "center" => Some(AlignItems::Center),
-                "baseline" => Some(AlignItems::Baseline),
-                "stretch" => Some(AlignItems::Stretch),
-                _ => None,
-            },
-            DomAttributeValue::Any(value) => <dyn Reflect>::downcast::<AlignItems>(value)
-                .ok()
-                .map(|n| *n),
-            _ => None,
-        }
-    }
-}
-
-impl From<DomAttributeValue> for Option<JustifyItems> {
-    fn from(value: DomAttributeValue) -> Self {
-        match value {
-            DomAttributeValue::Text(value) => match value.as_str() {
-                "default" => Some(JustifyItems::Default),
-                "start" => Some(JustifyItems::Start),
-                "end" => Some(JustifyItems::End),
-                "center" => Some(JustifyItems::Center),
-                "baseline" => Some(JustifyItems::Baseline),
-                "stretch" => Some(JustifyItems::Stretch),
-                _ => None,
-            },
-            DomAttributeValue::Any(value) => <dyn Reflect>::downcast::<JustifyItems>(value)
-                .ok()
-                .map(|n| *n),
-            _ => None,
-        }
-    }
-}
-
-impl From<DomAttributeValue> for Option<AlignSelf> {
-    fn from(value: DomAttributeValue) -> Self {
-        match value {
-            DomAttributeValue::Text(value) => match value.as_str() {
-                "auto" => Some(AlignSelf::Auto),
-                "start" => Some(AlignSelf::Start),
-                "end" => Some(AlignSelf::End),
-                "flex-start" => Some(AlignSelf::FlexStart),
-                "flex-end" => Some(AlignSelf::FlexEnd),
-                "center" => Some(AlignSelf::Center),
-                "baseline" => Some(AlignSelf::Baseline),
-                "stretch" => Some(AlignSelf::Stretch),
-                _ => None,
-            },
-            DomAttributeValue::Any(value) => {
-                <dyn Reflect>::downcast::<AlignSelf>(value).ok().map(|n| *n)
-            }
-            _ => None,
-        }
-    }
-}
-
-impl From<DomAttributeValue> for Option<JustifySelf> {
-    fn from(value: DomAttributeValue) -> Self {
-        match value {
-            DomAttributeValue::Text(value) => match value.as_str() {
-                "auto" => Some(JustifySelf::Auto),
-                "start" => Some(JustifySelf::Start),
-                "end" => Some(JustifySelf::End),
-                "center" => Some(JustifySelf::Center),
-                "baseline" => Some(JustifySelf::Baseline),
-                "stretch" => Some(JustifySelf::Stretch),
-                _ => None,
-            },
-            DomAttributeValue::Any(value) => <dyn Reflect>::downcast::<JustifySelf>(value)
-                .ok()
-                .map(|n| *n),
-            _ => None,
-        }
-    }
-}
-
-impl From<DomAttributeValue> for Option<AlignContent> {
-    fn from(value: DomAttributeValue) -> Self {
-        match value {
-            DomAttributeValue::Text(value) => match value.as_str() {
-                "default" => Some(AlignContent::Default),
-                "start" => Some(AlignContent::Start),
-                "end" => Some(AlignContent::End),
-                "flex-start" => Some(AlignContent::FlexStart),
-                "flex-end" => Some(AlignContent::FlexEnd),
-                "center" => Some(AlignContent::Center),
-                "stretch" => Some(AlignContent::Stretch),
-                "space-evenly" => Some(AlignContent::SpaceEvenly),
-                "space-between" => Some(AlignContent::SpaceBetween),
-                "space-around" => Some(AlignContent::SpaceAround),
-                _ => None,
-            },
-            DomAttributeValue::Any(value) => <dyn Reflect>::downcast::<AlignContent>(value)
-                .ok()
-                .map(|n| *n),
-            _ => None,
-        }
-    }
-}
-
-impl From<DomAttributeValue> for Option<JustifyContent> {
-    fn from(value: DomAttributeValue) -> Self {
-        match value {
-            DomAttributeValue::Text(value) => match value.as_str() {
-                "default" => Some(JustifyContent::Default),
-                "start" => Some(JustifyContent::Start),
-                "end" => Some(JustifyContent::End),
-                "flex-start" => Some(JustifyContent::FlexStart),
-                "flex-end" => Some(JustifyContent::FlexEnd),
-                "center" => Some(JustifyContent::Center),
-                "space-evenly" => Some(JustifyContent::SpaceEvenly),
-                "space-between" => Some(JustifyContent::SpaceBetween),
-                "space-around" => Some(JustifyContent::SpaceAround),
-                _ => None,
-            },
-            DomAttributeValue::Any(value) => <dyn Reflect>::downcast::<JustifyContent>(value)
-                .ok()
-                .map(|n| *n),
-            _ => None,
-        }
-    }
-}
-
-impl From<DomAttributeValue> for Option<FlexDirection> {
-    fn from(value: DomAttributeValue) -> Self {
-        match value {
-            DomAttributeValue::Text(value) => match value.as_str() {
-                "row" => Some(FlexDirection::Row),
-                "column" => Some(FlexDirection::Column),
-                "row-reverse" => Some(FlexDirection::RowReverse),
-                "column-reverse" => Some(FlexDirection::ColumnReverse),
-                _ => None,
-            },
-            DomAttributeValue::Any(value) => <dyn Reflect>::downcast::<FlexDirection>(value)
-                .ok()
-                .map(|n| *n),
-            _ => None,
-        }
-    }
-}
-
-impl From<DomAttributeValue> for Option<FlexWrap> {
-    fn from(value: DomAttributeValue) -> Self {
-        match value {
-            DomAttributeValue::Text(value) => match value.as_str() {
-                "no-wrap" => Some(FlexWrap::NoWrap),
-                "wrap" => Some(FlexWrap::Wrap),
-                "wrap-reverse" => Some(FlexWrap::WrapReverse),
-                _ => None,
-            },
-            DomAttributeValue::Any(value) => {
-                <dyn Reflect>::downcast::<FlexWrap>(value).ok().map(|n| *n)
-            }
-            _ => None,
-        }
-    }
-}
-
-impl From<DomAttributeValue> for Option<Visibility> {
-    fn from(value: DomAttributeValue) -> Self {
-        match value {
-            DomAttributeValue::Text(value) => match value.as_str() {
-                "visible" => Some(Visibility::Visible),
-                "hidden" => Some(Visibility::Hidden),
-                "inherit" => Some(Visibility::Inherited),
-                _ => None,
-            },
-            DomAttributeValue::Any(value) => <dyn Reflect>::downcast::<Visibility>(value)
-                .ok()
-                .map(|n| *n),
-            _ => None,
-        }
-    }
-}
-
 #[derive(Debug, Default, Reflect, Clone)]
 pub struct TextSections(pub Vec<TextSection>);
 
@@ -651,6 +253,124 @@ impl From<DomAttributeValue> for Option<TextSections> {
     }
 }
 
+#[derive(Reflect, Debug, Clone, PartialEq)]
+#[reflect(FromReflect)]
+pub enum Texture {
+    Color(Color),
+    Image {
+        image: Handle<Image>,
+        flip_x: bool,
+        flip_y: bool,
+        color: Color,
+    },
+    Atlas {
+        atlas: Handle<TextureAtlas>,
+        index: usize,
+        flip_x: bool,
+        flip_y: bool,
+        color: Color,
+    },
+}
+
+impl MyFromStr for Texture {
+    fn from_str(s: &str) -> Option<Self> {
+        parse_color(s).map(Texture::Color)
+    }
+}
+
+impl MyFromStr for BorderColor {
+    fn from_str(s: &str) -> Option<Self> {
+        from_str::<Color>(s).map(BorderColor)
+    }
+}
+
+impl MyFromStr for Color {
+    fn from_str(s: &str) -> Option<Self> {
+        parse_color(s)
+    }
+}
+
+impl MyFromStr for UiOptionalRect {
+    fn from_str(s: &str) -> Option<Self> {
+        let mut split = s.split_whitespace().map(parse_size_val).collect::<Vec<_>>();
+        match split.len() {
+            1 => Some(UiOptionalRect::all(split.pop().unwrap())),
+            2 => {
+                let first = split.pop().unwrap();
+                let second = split.pop().unwrap();
+                Some(UiOptionalRect::axes(second, first))
+            }
+            3 => {
+                let first = split.pop().unwrap();
+                let second = split.pop().unwrap();
+                let three = split.pop().unwrap();
+                Some(UiOptionalRect::new(second, second, first, three))
+            }
+            4 => {
+                let first = split.pop().unwrap();
+                let second = split.pop().unwrap();
+                let three = split.pop().unwrap();
+                let four = split.pop().unwrap();
+                Some(UiOptionalRect::new(four, second, first, three))
+            }
+            _ => None,
+        }
+    }
+}
+
+impl MyFromStr for Display {
+    fn from_str(s: &str) -> Option<Self> {
+        match s {
+            "flex" => Some(Display::Flex),
+            "grid" => Some(Display::Grid),
+            "none" => Some(Display::None),
+            _ => None,
+        }
+    }
+}
+
+impl From<DomAttributeValue> for Option<Val> {
+    fn from(value: DomAttributeValue) -> Self {
+        match value {
+            DomAttributeValue::Text(value) => Some(parse_size_val(&value)),
+            DomAttributeValue::Int(value) => Some(Val::Px(value as f32)),
+            DomAttributeValue::Float(value) => Some(Val::Px(value as f32)),
+            _ => None,
+        }
+    }
+}
+
+impl From<DomAttributeValue> for Option<Option<f32>> {
+    fn from(value: DomAttributeValue) -> Self {
+        match value {
+            DomAttributeValue::Text(value) => {
+                let value: Option<f32> = value.parse::<f32>().ok();
+                Some(value)
+            }
+            DomAttributeValue::Int(value) => Some(Some(value as f32)),
+            DomAttributeValue::Float(value) => Some(Some(value as f32)),
+            _ => None,
+        }
+    }
+}
+
+impl From<DomAttributeValue> for Option<UiOptionalRect> {
+    fn from(value: DomAttributeValue) -> Self {
+        match value {
+            DomAttributeValue::Text(value) => from_str(&value),
+            DomAttributeValue::Float(value) => Some(UiOptionalRect::all(Val::Px(value as f32))),
+            DomAttributeValue::Int(value) => Some(UiOptionalRect::all(Val::Px(value as f32))),
+            DomAttributeValue::Any(value) => {
+                let Ok(value) = <dyn Reflect>::downcast::<UiOptionalRect>(value) else {
+                    return None;
+                };
+                Some(*value)
+            }
+            _ => None,
+        }
+    }
+}
+
 impl From<DomAttributeValue> for Option<ZIndex> {
     fn from(value: DomAttributeValue) -> Self {
         match value {
@@ -663,22 +383,13 @@ impl From<DomAttributeValue> for Option<ZIndex> {
     }
 }
 
-impl From<DomAttributeValue> for Option<Transform> {
-    fn from(value: DomAttributeValue) -> Self {
-        match value {
-            // DomAttributeValue::Text(value) => ,
-            DomAttributeValue::Any(value) => {
-                <dyn Reflect>::downcast::<Transform>(value).ok().map(|n| *n)
-            }
-            _ => None,
-        }
-    }
-}
-
 impl From<DomAttributeValue> for Option<Quat> {
     fn from(value: DomAttributeValue) -> Self {
         match value {
-            // DomAttributeValue::Text(value) => ,
+            DomAttributeValue::Text(value) => value
+                .parse()
+                .map(|value: f32| Quat::from_rotation_z(value.to_radians()))
+                .ok(),
             DomAttributeValue::Float(value) => {
                 Some(Quat::from_rotation_z((value as f32).to_radians()))
             }
@@ -700,9 +411,12 @@ impl From<DomAttributeValue> for Option<Quat> {
 impl From<DomAttributeValue> for Option<Vec3> {
     fn from(value: DomAttributeValue) -> Self {
         match value {
+            DomAttributeValue::Text(value) => value
+                .parse()
+                .map(|n: f32| Vec3::Z * (n.to_radians() as f32))
+                .ok(),
             DomAttributeValue::Float(value) => Some(Vec3::Z * (value.to_radians() as f32)),
             DomAttributeValue::Int(value) => Some(Vec3::Z * (value as f32).to_radians()),
-            // DomAttributeValue::Text(value) => ,
             DomAttributeValue::Any(value) => <dyn Reflect>::downcast::<Vec3>(value)
                 .ok()
                 .map(|n: Box<Vec3>| *n),
@@ -711,57 +425,6 @@ impl From<DomAttributeValue> for Option<Vec3> {
     }
 }
 
-impl From<DomAttributeValue> for Option<BreakLineOn> {
-    fn from(value: DomAttributeValue) -> Self {
-        match value {
-            DomAttributeValue::Text(value) => match value.as_str() {
-                "word-boundary" => Some(BreakLineOn::WordBoundary),
-                "any-character" => Some(BreakLineOn::AnyCharacter),
-                "no-wrap" => Some(BreakLineOn::NoWrap),
-                _ => None,
-            },
-            DomAttributeValue::Any(value) => <dyn Reflect>::downcast::<BreakLineOn>(value)
-                .ok()
-                .map(|n| *n),
-            _ => None,
-        }
-    }
-}
-
-impl From<DomAttributeValue> for Option<TextAlignment> {
-    fn from(value: DomAttributeValue) -> Self {
-        match value {
-            DomAttributeValue::Text(value) => match value.as_str() {
-                "left" => Some(TextAlignment::Left),
-                "center" => Some(TextAlignment::Center),
-                "right" => Some(TextAlignment::Right),
-                _ => None,
-            },
-            DomAttributeValue::Any(value) => <dyn Reflect>::downcast::<TextAlignment>(value)
-                .ok()
-                .map(|n| *n),
-            _ => None,
-        }
-    }
-}
-/* impl From<DomAttributeValue> for Option<Origin> {
-    fn from(value: DomAttributeValue) -> Self {
-        match value {
-            DomAttributeValue::Text(value) => match value.as_str() {
-                "bottom-left" => Some(Origin::BottomLeft),
-                "bottom-right" => Some(Origin::BottomRight),
-                "center" => Some(Origin::Center),
-                "top-left" => Some(Origin::TopLeft),
-                "top-right" => Some(Origin::TopRight),
-                _ => None,
-            },
-            DomAttributeValue::Any(value) => <dyn Reflect>::downcast::<Origin>(value)
-                .ok()
-                .map(|n| *n),
-            _ => None,
-        }
-    }
-} */
 impl<T: Asset> From<DomAttributeValue> for Option<Handle<T>> {
     fn from(value: DomAttributeValue) -> Self {
         match value {
@@ -773,89 +436,209 @@ impl<T: Asset> From<DomAttributeValue> for Option<Handle<T>> {
     }
 }
 
-impl AttrValue for Color {
-    fn clone_prop_value(&self) -> SmallBox<dyn AttrValue, S1> {
-        smallbox!(self.clone())
-    }
-
-    fn default_value() -> Self {
-        Color::rgba_u8(0, 0, 0, 0)
-    }
-}
-
-impl AttrValue for f64 {
-    fn clone_prop_value(&self) -> SmallBox<dyn AttrValue, S1> {
-        smallbox!(self.clone())
-    }
-    fn default_value() -> Self {
-        <Self as Default>::default()
+impl MyFromStr for PositionType {
+    fn from_str(s: &str) -> Option<Self> {
+        match s {
+            "relative" => Some(PositionType::Relative),
+            "absolute" => Some(PositionType::Absolute),
+            _ => None,
+        }
     }
 }
 
-impl AttrValue for bool {
-    fn clone_prop_value(&self) -> SmallBox<dyn AttrValue, S1> {
-        smallbox!(self.clone())
-    }
-    fn default_value() -> Self {
-        <Self as Default>::default()
-    }
-}
-
-impl AttrValue for i64 {
-    fn clone_prop_value(&self) -> SmallBox<dyn AttrValue, S1> {
-        smallbox!(self.clone())
-    }
-    fn default_value() -> Self {
-        <Self as Default>::default()
-    }
-}
-
-impl AttrValue for Texture {
-    fn clone_prop_value(&self) -> SmallBox<dyn AttrValue, S1> {
-        smallbox!(self.clone())
-    }
-    fn default_value() -> Self {
-        Texture::Color(Color::rgba_u8(0, 0, 0, 0))
+impl MyFromStr for OptionalOverflow {
+    fn from_str(s: &str) -> Option<Self> {
+        match s {
+            "visible" | "visible visible" => Some(OptionalOverflow {
+                x: Some(OverflowAxis::Visible),
+                y: Some(OverflowAxis::Visible),
+            }),
+            "visible clip" => Some(OptionalOverflow {
+                x: Some(OverflowAxis::Clip),
+                y: Some(OverflowAxis::Clip),
+            }),
+            "clip" | "clip clip" => Some(OptionalOverflow {
+                x: Some(OverflowAxis::Clip),
+                y: Some(OverflowAxis::Clip),
+            }),
+            "clip visible" => Some(OptionalOverflow {
+                x: Some(OverflowAxis::Clip),
+                y: Some(OverflowAxis::Clip),
+            }),
+            _ => None,
+        }
     }
 }
 
-impl AttrValue for f32 {
-    fn clone_prop_value(&self) -> SmallBox<dyn AttrValue, S1> {
-        smallbox!(self.clone())
-    }
-    fn default_value() -> Self {
-        <Self as Default>::default()
-    }
-}
-
-impl AttrValue for Val {
-    fn clone_prop_value(&self) -> SmallBox<dyn AttrValue, S1> {
-        smallbox!(self.clone())
-    }
-    fn default_value() -> Self {
-        <Self as Default>::default()
+impl MyFromStr for Direction {
+    fn from_str(s: &str) -> Option<Self> {
+        match s {
+            "ltr" => Some(Direction::LeftToRight),
+            "rtl" => Some(Direction::RightToLeft),
+            "inherit" => Some(Direction::Inherit),
+            _ => None,
+        }
     }
 }
 
-impl AttrValue for BorderColor {
-    fn clone_prop_value(&self) -> SmallBox<dyn AttrValue, S1> {
-        smallbox!(self.clone())
+impl MyFromStr for AlignItems {
+    fn from_str(s: &str) -> Option<Self> {
+        match s {
+            "default" => Some(AlignItems::Default),
+            "start" => Some(AlignItems::Start),
+            "end" => Some(AlignItems::End),
+            "flex-start" => Some(AlignItems::FlexStart),
+            "flex-end" => Some(AlignItems::FlexEnd),
+            "center" => Some(AlignItems::Center),
+            "baseline" => Some(AlignItems::Baseline),
+            "stretch" => Some(AlignItems::Stretch),
+            _ => None,
+        }
     }
-    fn default_value() -> Self {
-        BorderColor(Color::rgba_u8(0, 0, 0, 0))
+}
+
+impl MyFromStr for JustifyItems {
+    fn from_str(s: &str) -> Option<Self> {
+        match s {
+            "default" => Some(JustifyItems::Default),
+            "start" => Some(JustifyItems::Start),
+            "end" => Some(JustifyItems::End),
+            "center" => Some(JustifyItems::Center),
+            "baseline" => Some(JustifyItems::Baseline),
+            "stretch" => Some(JustifyItems::Stretch),
+            _ => None,
+        }
+    }
+}
+
+impl MyFromStr for AlignSelf {
+    fn from_str(s: &str) -> Option<Self> {
+        match s {
+            "auto" => Some(AlignSelf::Auto),
+            "start" => Some(AlignSelf::Start),
+            "end" => Some(AlignSelf::End),
+            "flex-start" => Some(AlignSelf::FlexStart),
+            "flex-end" => Some(AlignSelf::FlexEnd),
+            "center" => Some(AlignSelf::Center),
+            "baseline" => Some(AlignSelf::Baseline),
+            "stretch" => Some(AlignSelf::Stretch),
+            _ => None,
+        }
+    }
+}
+
+impl MyFromStr for JustifySelf {
+    fn from_str(s: &str) -> Option<Self> {
+        match s {
+            "auto" => Some(JustifySelf::Auto),
+            "start" => Some(JustifySelf::Start),
+            "end" => Some(JustifySelf::End),
+            "center" => Some(JustifySelf::Center),
+            "baseline" => Some(JustifySelf::Baseline),
+            "stretch" => Some(JustifySelf::Stretch),
+            _ => None,
+        }
+    }
+}
+
+impl MyFromStr for AlignContent {
+    fn from_str(s: &str) -> Option<Self> {
+        match s {
+            "default" => Some(AlignContent::Default),
+            "start" => Some(AlignContent::Start),
+            "end" => Some(AlignContent::End),
+            "flex-start" => Some(AlignContent::FlexStart),
+            "flex-end" => Some(AlignContent::FlexEnd),
+            "center" => Some(AlignContent::Center),
+            "stretch" => Some(AlignContent::Stretch),
+            "space-evenly" => Some(AlignContent::SpaceEvenly),
+            "space-between" => Some(AlignContent::SpaceBetween),
+            "space-around" => Some(AlignContent::SpaceAround),
+            _ => None,
+        }
+    }
+}
+
+impl MyFromStr for JustifyContent {
+    fn from_str(s: &str) -> Option<Self> {
+        match s {
+            "default" => Some(JustifyContent::Default),
+            "start" => Some(JustifyContent::Start),
+            "end" => Some(JustifyContent::End),
+            "flex-start" => Some(JustifyContent::FlexStart),
+            "flex-end" => Some(JustifyContent::FlexEnd),
+            "center" => Some(JustifyContent::Center),
+            "space-evenly" => Some(JustifyContent::SpaceEvenly),
+            "space-between" => Some(JustifyContent::SpaceBetween),
+            "space-around" => Some(JustifyContent::SpaceAround),
+            _ => None,
+        }
+    }
+}
+
+impl MyFromStr for FlexDirection {
+    fn from_str(s: &str) -> Option<Self> {
+        match s {
+            "row" => Some(FlexDirection::Row),
+            "column" => Some(FlexDirection::Column),
+            "row-reverse" => Some(FlexDirection::RowReverse),
+            "column-reverse" => Some(FlexDirection::ColumnReverse),
+            _ => None,
+        }
+    }
+}
+
+impl MyFromStr for FlexWrap {
+    fn from_str(s: &str) -> Option<Self> {
+        match s {
+            "no-wrap" => Some(FlexWrap::NoWrap),
+            "wrap" => Some(FlexWrap::Wrap),
+            "wrap-reverse" => Some(FlexWrap::WrapReverse),
+            _ => None,
+        }
+    }
+}
+impl MyFromStr for Visibility {
+    fn from_str(s: &str) -> Option<Self> {
+        match s {
+            "visible" => Some(Visibility::Visible),
+            "hidden" => Some(Visibility::Hidden),
+            "inherit" => Some(Visibility::Inherited),
+            _ => None,
+        }
+    }
+}
+
+impl MyFromStr for BreakLineOn {
+    fn from_str(s: &str) -> Option<Self> {
+        match s {
+            "word-boundary" => Some(BreakLineOn::WordBoundary),
+            "any-character" => Some(BreakLineOn::AnyCharacter),
+            "no-wrap" => Some(BreakLineOn::NoWrap),
+            _ => None,
+        }
+    }
+}
+impl MyFromStr for TextAlignment {
+    fn from_str(s: &str) -> Option<Self> {
+        match s {
+            "left" => Some(TextAlignment::Left),
+            "center" => Some(TextAlignment::Center),
+            "right" => Some(TextAlignment::Right),
+            _ => None,
+        }
     }
 }
 
 impl AttrValue for UiOptionalRect {
-    fn clone_prop_value(&self) -> SmallBox<dyn AttrValue, S1> {
+    fn clone_att_value(&self) -> SmallBox<dyn AttrValue, S1> {
         smallbox!(self.clone())
     }
     fn default_value() -> Self {
-        UiOptionalRect::zero()
+        <Self as Default>::default()
     }
 
-    fn merge_value(&mut self, value: SmallBox<dyn AttrValue, S1>) {
-        let value = *value.downcast::<Self>().ok().unwrap();
+    fn merge_value(&mut self, value: Self) {
         self.left = self.left.or_else(|| value.left);
         self.right = self.right.or_else(|| value.right);
         self.top = self.top.or_else(|| value.top);
@@ -863,232 +646,81 @@ impl AttrValue for UiOptionalRect {
     }
 }
 
-impl AttrValue for Display {
-    fn clone_prop_value(&self) -> SmallBox<dyn AttrValue, S1> {
-        smallbox!(self.clone())
-    }
-    fn default_value() -> Self {
-        <Self as Default>::default()
-    }
-}
-
-impl AttrValue for PositionType {
-    fn clone_prop_value(&self) -> SmallBox<dyn AttrValue, S1> {
-        smallbox!(self.clone())
-    }
-    fn default_value() -> Self {
-        <Self as Default>::default()
-    }
-}
-
 impl AttrValue for OptionalOverflow {
-    fn clone_prop_value(&self) -> SmallBox<dyn AttrValue, S1> {
+    fn clone_att_value(&self) -> SmallBox<dyn AttrValue, S1> {
         smallbox!(self.clone())
     }
     fn default_value() -> Self {
         <Self as Default>::default()
     }
 
-    fn merge_value(&mut self, value: SmallBox<dyn AttrValue, S1>) {
-        let value = *value.downcast::<Self>().ok().unwrap();
+    fn merge_value(&mut self, value: Self) {
         self.x = self.x.or_else(|| value.x);
         self.y = self.y.or_else(|| value.y);
     }
 }
 
-impl AttrValue for Direction {
-    fn clone_prop_value(&self) -> SmallBox<dyn AttrValue, S1> {
+impl AttrValue for OptionalTransform {
+    fn clone_att_value(&self) -> SmallBox<dyn AttrValue, S1> {
         smallbox!(self.clone())
     }
+
     fn default_value() -> Self {
         <Self as Default>::default()
     }
-}
 
-impl AttrValue for AlignItems {
-    fn clone_prop_value(&self) -> SmallBox<dyn AttrValue, S1> {
-        smallbox!(self.clone())
-    }
-    fn default_value() -> Self {
-        <Self as Default>::default()
+    fn merge_value(&mut self, value: Self) {
+        self.translation = self.translation.or_else(|| value.translation);
+        self.rotation = self.rotation.or_else(|| value.rotation);
+        self.scale = self.scale.or_else(|| value.scale);
     }
 }
 
-impl AttrValue for JustifyItems {
-    fn clone_prop_value(&self) -> SmallBox<dyn AttrValue, S1> {
-        smallbox!(self.clone())
-    }
-    fn default_value() -> Self {
-        <Self as Default>::default()
-    }
-}
+impl_from_attr_value!(OverflowAxis);
+impl_from_attr_value!(Color);
+impl_from_attr_value!(Texture);
+impl_from_attr_value!(BorderColor, Color);
+impl_from_attr_value!(Display);
+impl_from_attr_value!(PositionType);
+impl_from_attr_value!(OptionalOverflow);
+impl_from_attr_value!(Direction);
+impl_from_attr_value!(TextAlignment);
+impl_from_attr_value!(AlignItems);
+impl_from_attr_value!(JustifyItems);
+impl_from_attr_value!(AlignSelf);
+impl_from_attr_value!(JustifySelf);
+impl_from_attr_value!(AlignContent);
+impl_from_attr_value!(JustifyContent);
+impl_from_attr_value!(FlexDirection);
+impl_from_attr_value!(FlexWrap);
+impl_from_attr_value!(Visibility);
+impl_from_attr_value!(BreakLineOn);
+impl_from_attr_value_only_dyn!(Transform);
+impl_from_attr_value_only_dyn!(OptionalTransform);
 
-impl AttrValue for AlignSelf {
-    fn clone_prop_value(&self) -> SmallBox<dyn AttrValue, S1> {
-        smallbox!(self.clone())
-    }
-    fn default_value() -> Self {
-        <Self as Default>::default()
-    }
-}
+impl_default_attr_value!(Texture, Texture::Color(Color::rgba_u8(0, 0, 0, 0)));
+impl_default_attr_value!(Color, Color::rgba_u8(0, 0, 0, 0));
+impl_default_attr_value!(BorderColor, BorderColor(Color::rgba_u8(0, 0, 0, 0)));
 
-impl AttrValue for JustifySelf {
-    fn clone_prop_value(&self) -> SmallBox<dyn AttrValue, S1> {
-        smallbox!(self.clone())
-    }
-    fn default_value() -> Self {
-        <Self as Default>::default()
-    }
-}
+impl_default_attr_value!(BreakLineOn, BreakLineOn::WordBoundary);
 
-impl AttrValue for AlignContent {
-    fn clone_prop_value(&self) -> SmallBox<dyn AttrValue, S1> {
-        smallbox!(self.clone())
-    }
-    fn default_value() -> Self {
-        <Self as Default>::default()
-    }
-}
+impl_default_attr_value!(TextAlignment, TextAlignment::Left);
 
-impl AttrValue for JustifyContent {
-    fn clone_prop_value(&self) -> SmallBox<dyn AttrValue, S1> {
-        smallbox!(self.clone())
-    }
-    fn default_value() -> Self {
-        <Self as Default>::default()
-    }
-}
-
-impl AttrValue for FlexDirection {
-    fn clone_prop_value(&self) -> SmallBox<dyn AttrValue, S1> {
-        smallbox!(self.clone())
-    }
-    fn default_value() -> Self {
-        <Self as Default>::default()
-    }
-}
-
-impl AttrValue for FlexWrap {
-    fn clone_prop_value(&self) -> SmallBox<dyn AttrValue, S1> {
-        smallbox!(self.clone())
-    }
-    fn default_value() -> Self {
-        <Self as Default>::default()
-    }
-}
-
-impl AttrValue for Visibility {
-    fn clone_prop_value(&self) -> SmallBox<dyn AttrValue, S1> {
-        smallbox!(self.clone())
-    }
-    fn default_value() -> Self {
-        <Self as Default>::default()
-    }
-}
-
-impl AttrValue for TextSections {
-    fn clone_prop_value(&self) -> SmallBox<dyn AttrValue, S1> {
-        smallbox!(self.clone())
-    }
-    fn default_value() -> Self {
-        <Self as Default>::default()
-    }
-}
-
-impl AttrValue for ZIndex {
-    fn clone_prop_value(&self) -> SmallBox<dyn AttrValue, S1> {
-        smallbox!(self.clone())
-    }
-    fn default_value() -> Self {
-        <Self as Default>::default()
-    }
-}
-
-impl AttrValue for Transform {
-    fn clone_prop_value(&self) -> SmallBox<dyn AttrValue, S1> {
-        smallbox!(self.clone())
-    }
-    fn default_value() -> Self {
-        <Self as Default>::default()
-    }
-}
-
-impl AttrValue for Quat {
-    fn clone_prop_value(&self) -> SmallBox<dyn AttrValue, S1> {
-        smallbox!(self.clone())
-    }
-    fn default_value() -> Self {
-        <Self as Default>::default()
-    }
-}
-
-impl AttrValue for Vec3 {
-    fn clone_prop_value(&self) -> SmallBox<dyn AttrValue, S1> {
-        smallbox!(self.clone())
-    }
-    fn default_value() -> Self {
-        <Self as Default>::default()
-    }
-}
-
-impl AttrValue for BreakLineOn {
-    fn clone_prop_value(&self) -> SmallBox<dyn AttrValue, S1> {
-        smallbox!(self.clone())
-    }
-    fn default_value() -> Self {
-        BreakLineOn::WordBoundary
-    }
-}
-
-impl AttrValue for TextAlignment {
-    fn clone_prop_value(&self) -> SmallBox<dyn AttrValue, S1> {
-        smallbox!(self.clone())
-    }
-    fn default_value() -> Self {
-        TextAlignment::Left
-    }
-}
-
-impl AttrValue for String {
-    fn clone_prop_value(&self) -> SmallBox<dyn AttrValue, S1> {
-        smallbox!(self.clone())
-    }
-
-    fn default_value() -> Self
-        where
-            Self: Sized,
-    {
-        <Self as Default>::default()
-    }
-}
-
-impl<T: AttrValue + TypePath + FromReflect + Clone> AttrValue for Option<T> {
-    fn clone_prop_value(&self) -> SmallBox<dyn AttrValue, S1> {
-        smallbox!(match self {
-            None => None,
-            Some(n) => {
-                Some(T::clone(n))
-            }
-        })
-    }
-
-    fn default_value() -> Self
-        where
-            Self: Sized,
-    {
-        <Self as Default>::default()
-    }
-}
-
-impl<T: Asset> AttrValue for Handle<T> {
-    fn clone_prop_value(&self) -> SmallBox<dyn AttrValue, S1> {
-        smallbox!(self.clone())
-    }
-
-    fn default_value() -> Self
-        where
-            Self: Sized,
-    {
-        <Self as Default>::default()
-    }
-}
+impl_default_attr_value!(Display);
+impl_default_attr_value!(PositionType);
+impl_default_attr_value!(Direction);
+impl_default_attr_value!(AlignItems);
+impl_default_attr_value!(JustifyItems);
+impl_default_attr_value!(AlignSelf);
+impl_default_attr_value!(JustifySelf);
+impl_default_attr_value!(AlignContent);
+impl_default_attr_value!(JustifyContent);
+impl_default_attr_value!(FlexDirection);
+impl_default_attr_value!(FlexWrap);
+impl_default_attr_value!(Visibility);
+impl_default_attr_value!(TextSections);
+impl_default_attr_value!(ZIndex);
+impl_default_attr_value!(Transform);
+impl_default_attr_value!(Quat);
+impl_default_attr_value!(Vec3);
+impl_default_attr_value!(OverflowAxis);

@@ -8,9 +8,8 @@ pub use element_input::*;
 pub use element_text::*;
 pub use element_view::*;
 
-use crate::{element_core::ElementTypeUnTyped, ElementAttr, SetAttrValueContext};
 use crate::element_attrs;
-
+use crate::{element_core::ElementTypeUnTyped, ElementAttr, SetAttrValueContext};
 mod element_input;
 mod element_text;
 mod element_view;
@@ -90,163 +89,167 @@ pub fn get_element_type(name: &str) -> &'static dyn ElementTypeUnTyped {
 }
 
 #[macro_export]
+macro_rules! attr_description_define{
+    ($($attr:ident),*) =>{
+        $(pub const $attr: crate::DioxusAttributeDescription =
+            crate::element_attrs::$attr::ATTRIBUTE_DESCRIPTION;)*
+    }
+}
+
+#[macro_export]
 macro_rules! common_attrs_define {
     () => {
-        pub const class: crate::DioxusAttributeDescription =
-            crate::element_attrs::class::ATTRIBUTE_DESCRIPTION;
-        pub const name: crate::DioxusAttributeDescription =
-            crate::element_attrs::name::ATTRIBUTE_DESCRIPTION;
-        pub const z_index: crate::DioxusAttributeDescription =
-            crate::element_attrs::z_index::ATTRIBUTE_DESCRIPTION;
-        pub const background: crate::DioxusAttributeDescription =
-            crate::element_attrs::background::ATTRIBUTE_DESCRIPTION;
-        pub const border: crate::DioxusAttributeDescription =
-            crate::element_attrs::border::ATTRIBUTE_DESCRIPTION;
-        pub const border_color: crate::DioxusAttributeDescription =
-            crate::element_attrs::border_color::ATTRIBUTE_DESCRIPTION;
-        pub const display: crate::DioxusAttributeDescription =
-            crate::element_attrs::display::ATTRIBUTE_DESCRIPTION;
-        pub const position_type: crate::DioxusAttributeDescription =
-            crate::element_attrs::position_type::ATTRIBUTE_DESCRIPTION;
-        pub const overflow: crate::DioxusAttributeDescription =
-            crate::element_attrs::overflow::ATTRIBUTE_DESCRIPTION;
-        pub const direction: crate::DioxusAttributeDescription =
-            crate::element_attrs::direction::ATTRIBUTE_DESCRIPTION;
-        pub const left: crate::DioxusAttributeDescription =
-            crate::element_attrs::left::ATTRIBUTE_DESCRIPTION;
-        pub const right: crate::DioxusAttributeDescription =
-            crate::element_attrs::right::ATTRIBUTE_DESCRIPTION;
-        pub const top: crate::DioxusAttributeDescription =
-            crate::element_attrs::top::ATTRIBUTE_DESCRIPTION;
-        pub const bottom: crate::DioxusAttributeDescription =
-            crate::element_attrs::bottom::ATTRIBUTE_DESCRIPTION;
-        pub const width: crate::DioxusAttributeDescription =
-            crate::element_attrs::width::ATTRIBUTE_DESCRIPTION;
-        pub const height: crate::DioxusAttributeDescription =
-            crate::element_attrs::height::ATTRIBUTE_DESCRIPTION;
-        pub const min_width: crate::DioxusAttributeDescription =
-            crate::element_attrs::min_width::ATTRIBUTE_DESCRIPTION;
-        pub const min_height: crate::DioxusAttributeDescription =
-            crate::element_attrs::min_height::ATTRIBUTE_DESCRIPTION;
-        pub const max_width: crate::DioxusAttributeDescription =
-            crate::element_attrs::max_width::ATTRIBUTE_DESCRIPTION;
-        pub const max_height: crate::DioxusAttributeDescription =
-            crate::element_attrs::max_height::ATTRIBUTE_DESCRIPTION;
-        pub const margin: crate::DioxusAttributeDescription =
-            crate::element_attrs::margin::ATTRIBUTE_DESCRIPTION;
-        pub const padding: crate::DioxusAttributeDescription =
-            crate::element_attrs::padding::ATTRIBUTE_DESCRIPTION;
-        pub const aspect_ratio: crate::DioxusAttributeDescription =
-            crate::element_attrs::aspect_ratio::ATTRIBUTE_DESCRIPTION;
-        pub const align_items: crate::DioxusAttributeDescription =
-            crate::element_attrs::align_items::ATTRIBUTE_DESCRIPTION;
-        pub const justify_items: crate::DioxusAttributeDescription =
-            crate::element_attrs::justify_items::ATTRIBUTE_DESCRIPTION;
-        pub const align_self: crate::DioxusAttributeDescription =
-            crate::element_attrs::align_self::ATTRIBUTE_DESCRIPTION;
-        pub const justify_self: crate::DioxusAttributeDescription =
-            crate::element_attrs::justify_self::ATTRIBUTE_DESCRIPTION;
-        pub const align_content: crate::DioxusAttributeDescription =
-            crate::element_attrs::align_content::ATTRIBUTE_DESCRIPTION;
-        pub const justify_content: crate::DioxusAttributeDescription =
-            crate::element_attrs::justify_content::ATTRIBUTE_DESCRIPTION;
-        pub const flex_direction: crate::DioxusAttributeDescription =
-            crate::element_attrs::flex_direction::ATTRIBUTE_DESCRIPTION;
-        pub const flex_wrap: crate::DioxusAttributeDescription =
-            crate::element_attrs::flex_wrap::ATTRIBUTE_DESCRIPTION;
-        pub const flex_grow: crate::DioxusAttributeDescription =
-            crate::element_attrs::flex_grow::ATTRIBUTE_DESCRIPTION;
-        pub const flex_shrink: crate::DioxusAttributeDescription =
-            crate::element_attrs::flex_shrink::ATTRIBUTE_DESCRIPTION;
-        pub const flex_basis: crate::DioxusAttributeDescription =
-            crate::element_attrs::flex_basis::ATTRIBUTE_DESCRIPTION;
-        pub const visibility: crate::DioxusAttributeDescription =
-            crate::element_attrs::visibility::ATTRIBUTE_DESCRIPTION;
-        pub const transform: crate::DioxusAttributeDescription =
-            crate::element_attrs::transform::ATTRIBUTE_DESCRIPTION;
-        pub const transation: crate::DioxusAttributeDescription =
-            crate::element_attrs::transation::ATTRIBUTE_DESCRIPTION;
-        pub const rotation: crate::DioxusAttributeDescription =
-            crate::element_attrs::rotation::ATTRIBUTE_DESCRIPTION;
-        pub const scale: crate::DioxusAttributeDescription =
-            crate::element_attrs::scale::ATTRIBUTE_DESCRIPTION;
-        pub const text_color: crate::DioxusAttributeDescription =
-            crate::element_attrs::text_color::ATTRIBUTE_DESCRIPTION;
-        pub const font_size: crate::DioxusAttributeDescription =
-            crate::element_attrs::font_size::ATTRIBUTE_DESCRIPTION;
-        pub const text_linebreak: crate::DioxusAttributeDescription =
-            crate::element_attrs::text_linebreak::ATTRIBUTE_DESCRIPTION;
-        pub const text_align: crate::DioxusAttributeDescription =
-            crate::element_attrs::text_align::ATTRIBUTE_DESCRIPTION;
-        pub const font: crate::DioxusAttributeDescription =
-            crate::element_attrs::font::ATTRIBUTE_DESCRIPTION;
+        crate::attr_description_define!(
+            class,
+            name,
+            z_index,
+            background,
+            border_left,
+            border_right,
+            border_top,
+            border_bottom,
+            border_color,
+            display,
+            position_type,
+            overflow_x,
+            overflow_y,
+            direction,
+            left,
+            right,
+            top,
+            bottom,
+            width,
+            height,
+            min_width,
+            min_height,
+            max_width,
+            max_height,
+            margin_left,
+            margin_right,
+            margin_top,
+            margin_bottom,
+            padding_left,
+            padding_right,
+            padding_top,
+            padding_bottom,
+            aspect_ratio,
+            align_items,
+            justify_items,
+            align_self,
+            justify_self,
+            align_content,
+            justify_content,
+            flex_direction,
+            flex_wrap,
+            flex_grow,
+            flex_shrink,
+            flex_basis,
+            visibility,
+            transation,
+            rotation,
+            scale,
+            text_color,
+            font_size,
+            text_linebreak,
+            text_align,
+            font
+        );
+    };
+}
+
+#[macro_export]
+macro_rules! common_composite_attrs_define {
+    () => {
+        crate::attr_description_define!(margin, padding, border, transform);
     };
 }
 
 #[macro_export]
 macro_rules! impl_element_type_base {
-    ($(#[$attr:meta])*$name:ident,$($prop:ident),*) => {
-        use crate::element_core::ElementAttr;
-        $( #[$attr] )*
+    ($(#[$m_attr:meta])*$name:ident,$($attr:ident),* & $($comopsite_attr:ident),*) => {
+        use crate::{ElementCompositeAttr,ElementCompositeAttrUntyped,ElementAttr};
+        use crate::element_attrs as e;
+        $( #[$m_attr] )*
         pub struct $name;
         impl $name {
             crate::common_attrs_define!();
+            crate::common_composite_attrs_define!();
             $(
-                pub const $prop: crate::DioxusAttributeDescription = $prop::ATTRIBUTE_DESCRIPTION;
+                pub const $attr: crate::DioxusAttributeDescription = $attr::ATTRIBUTE_DESCRIPTION;
+            )*
+            $(
+                pub const $comopsite_attr: crate::DioxusAttributeDescription = $comopsite_attr::ATTRIBUTE_DESCRIPTION;
             )*
         }
         impl crate::ElementTypeBase for $name {
             const TAG_NAME: &'static str = stringify!($name);
-            const PROPS: &'static [&'static dyn crate::ElementAttrUntyped] = &[
-                &crate::element_attrs::class,
-                &crate::element_attrs::name,
-                &crate::element_attrs::z_index,
-                &crate::element_attrs::background,
-                &crate::element_attrs::border,
-                &crate::element_attrs::border_color,
-                &crate::element_attrs::display,
-                &crate::element_attrs::position_type,
-                &crate::element_attrs::overflow,
-                &crate::element_attrs::direction,
-                &crate::element_attrs::left,
-                &crate::element_attrs::right,
-                &crate::element_attrs::top,
-                &crate::element_attrs::bottom,
-                &crate::element_attrs::width,
-                &crate::element_attrs::height,
-                &crate::element_attrs::min_width,
-                &crate::element_attrs::min_height,
-                &crate::element_attrs::max_width,
-                &crate::element_attrs::max_height,
-                &crate::element_attrs::margin,
-                &crate::element_attrs::padding,
-                &crate::element_attrs::aspect_ratio,
-                &crate::element_attrs::align_items,
-                &crate::element_attrs::justify_items,
-                &crate::element_attrs::align_self,
-                &crate::element_attrs::justify_self,
-                &crate::element_attrs::align_content,
-                &crate::element_attrs::justify_content,
-                &crate::element_attrs::flex_direction,
-                &crate::element_attrs::flex_wrap,
-                &crate::element_attrs::flex_grow,
-                &crate::element_attrs::flex_shrink,
-                &crate::element_attrs::flex_basis,
-                &crate::element_attrs::visibility,
-                &crate::element_attrs::transform,
-                &crate::element_attrs::transation,
-                &crate::element_attrs::rotation,
-                &crate::element_attrs::scale,
-                &crate::element_attrs::text_color,
-                &crate::element_attrs::font_size,
-                &crate::element_attrs::text_linebreak,
-                &crate::element_attrs::text_align,
-                &crate::element_attrs::font,
-                $(&$prop,)*
+            const ATTRS: &'static [&'static dyn crate::ElementAttrUntyped] = &[
+                &e::class,
+                &e::name,
+                &e::z_index,
+                &e::background,
+                &e::border_left,
+                &e::border_right,
+                &e::border_top,
+                &e::border_bottom,
+                &e::border_color,
+                &e::display,
+                &e::position_type,
+                &e::overflow_x,
+                &e::overflow_y,
+                &e::direction,
+                &e::left,
+                &e::right,
+                &e::top,
+                &e::bottom,
+                &e::width,
+                &e::height,
+                &e::min_width,
+                &e::min_height,
+                &e::max_width,
+                &e::max_height,
+                &e::margin_left,
+                &e::margin_right,
+                &e::margin_top,
+                &e::margin_bottom,
+                &e::padding_left,
+                &e::padding_right,
+                &e::padding_top,
+                &e::padding_bottom,
+                &e::aspect_ratio,
+                &e::align_items,
+                &e::justify_items,
+                &e::align_self,
+                &e::justify_self,
+                &e::align_content,
+                &e::justify_content,
+                &e::flex_direction,
+                &e::flex_wrap,
+                &e::flex_grow,
+                &e::flex_shrink,
+                &e::flex_basis,
+                &e::visibility,
+                &e::transation,
+                &e::rotation,
+                &e::scale,
+                &e::text_color,
+                &e::font_size,
+                &e::text_linebreak,
+                &e::text_align,
+                &e::font,
+                $(&$attr,)*
             ];
+
+            const COMPOSITE_ATTRS: &'static [&'static dyn ElementCompositeAttrUntyped] = &[
+                &e::margin, &e::padding, &e::border, &e::transform
+            ];
+
         }
     };
-    ($(#[$attr:meta])*$name:ident) => {
-        impl_element_type_base!($( #[$attr] )*$name,);
+    ($(#[$m_attr:meta])*$name:ident,$($attr:ident),*) => {
+        impl_element_type_base!($( #[$m_attr] )*$name,$($attr),*&);
+    };
+    ($(#[$m_attr:meta])*$name:ident) => {
+        impl_element_type_base!($( #[$m_attr] )*$name,&);
     }
 }
