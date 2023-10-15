@@ -14,6 +14,22 @@ use crate::{
     from_str, get_element_type, impl_default_attr_value, smallbox, ElementTypeUnTyped, MyFromStr,
     ReflectTextStyledElementType, SmallBox, TextStyledElementType,
 };
+use dioxus::prelude::{AnyValue, IntoAttributeValue};
+
+#[derive(PartialEq, Eq, Debug, Deref, DerefMut, Clone, Copy)]
+pub struct Attr<T>(pub T);
+
+impl<'a, T: PartialEq + 'static> IntoAttributeValue<'a> for Attr<T> {
+    fn into_value(
+        self,
+        bump: &'a dioxus::core::exports::bumpalo::Bump,
+    ) -> dioxus::core::AttributeValue<'a> {
+        let boxed: dioxus::core::exports::bumpalo::boxed::Box<'a, dyn AnyValue> =
+            unsafe { dioxus::core::exports::bumpalo::boxed::Box::from_raw(bump.alloc(self.0)) };
+
+        dioxus::core::AttributeValue::Any(std::cell::RefCell::new(Some(boxed)))
+    }
+}
 
 #[derive(Copy, Clone, Default, PartialEq, Eq, Debug, Reflect, Serialize, Deserialize)]
 #[reflect(PartialEq, Serialize, Deserialize)]
