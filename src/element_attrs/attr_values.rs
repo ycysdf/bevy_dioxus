@@ -271,7 +271,7 @@ impl From<DomAttributeValue> for Option<TextSections> {
 
 #[derive(Reflect, Debug, Clone, PartialEq)]
 #[reflect(FromReflect)]
-pub enum Texture {
+pub enum UiTexture {
     Color(Color),
     Image {
         image: Handle<Image>,
@@ -288,9 +288,9 @@ pub enum Texture {
     },
 }
 
-impl MyFromStr for Texture {
+impl MyFromStr for UiTexture {
     fn from_str(s: &str) -> Option<Self> {
-        parse_color(s).map(Texture::Color)
+        parse_color(s).map(UiTexture::Color)
     }
 }
 
@@ -700,7 +700,7 @@ impl AttrValue for OptionalTransform {
 
 impl_from_attr_value!(OverflowAxis);
 impl_from_attr_value!(Color);
-impl_from_attr_value!(Texture);
+impl_from_attr_value!(UiTexture);
 impl_from_attr_value!(BorderColor, Color);
 impl_from_attr_value!(Display);
 impl_from_attr_value!(PositionType);
@@ -720,7 +720,7 @@ impl_from_attr_value!(BreakLineOn);
 impl_from_attr_value_only_dyn!(Transform);
 impl_from_attr_value_only_dyn!(OptionalTransform);
 
-impl_default_attr_value!(Texture, Texture::Color(Color::rgba_u8(0, 0, 0, 0)));
+impl_default_attr_value!(UiTexture, UiTexture::Color(Color::rgba_u8(0, 0, 0, 0)));
 impl_default_attr_value!(Color, Color::rgba_u8(0, 0, 0, 0));
 impl_default_attr_value!(BorderColor, BorderColor(Color::rgba_u8(0, 0, 0, 0)));
 

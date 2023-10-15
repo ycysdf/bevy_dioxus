@@ -14,7 +14,7 @@ use crate::entity_extra_data::EntitiesExtraData;
 use crate::tailwind::handle_classes;
 use crate::{
     get_element_type, set_text_value, ReflectTextStyledElementType, SetAttrValueContext,
-    TextStyledElementType, Texture,
+    TextStyledElementType, UiTexture,
 };
 
 pub const ATTR_COUNT: u8 = 53;
@@ -98,7 +98,7 @@ impl ElementAttr for z_index {
 pub struct background;
 
 impl ElementAttr for background {
-    type Value = Texture;
+    type Value = UiTexture;
 
     const TAG_NAME: &'static str = stringify!(background);
 
@@ -106,7 +106,7 @@ impl ElementAttr for background {
 
     fn set_value(&self, context: &mut SetAttrValueContext, value: impl Into<Self::Value>) {
         match value.into() {
-            Texture::Color(color) => {
+            UiTexture::Color(color) => {
                 context.entity_ref.insert(BackgroundColor(color));
                 context.entity_ref.remove::<(
                     UiImage,
@@ -115,7 +115,7 @@ impl ElementAttr for background {
                     UiTextureAtlasImage,
                 )>();
             }
-            Texture::Image {
+            UiTexture::Image {
                 color,
                 flip_x,
                 flip_y,
@@ -134,7 +134,7 @@ impl ElementAttr for background {
                     .entity_ref
                     .remove::<(Handle<TextureAtlas>, UiTextureAtlasImage)>();
             }
-            Texture::Atlas {
+            UiTexture::Atlas {
                 flip_y,
                 flip_x,
                 color,

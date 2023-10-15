@@ -12,7 +12,7 @@ use bevy_mod_picking::prelude::PickingInteraction;
 use dioxus::core::ElementId;
 use dioxus::prelude::*;
 
-use crate::{SetAttrValueContext, TextSections, Texture};
+use crate::{SetAttrValueContext, TextSections, UiTexture};
 use crate::apc::{self};
 use crate::ecs_apc::{EcsApcReceiver, EcsApcSender};
 use crate::entity_extra_data::EntitiesExtraData;
@@ -123,7 +123,7 @@ impl Plugin for DioxusPlugin {
             .register_type::<PickingInteraction>()
             .register_type::<InteractionClass>()
             .register_type::<TextSections>()
-            .register_type::<Texture>()
+            .register_type::<UiTexture>()
             .register_type::<crate::elements::view>()
             .register_type::<crate::elements::input>()
             .register_type::<crate::elements::text>()

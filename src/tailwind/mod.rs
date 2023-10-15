@@ -18,7 +18,7 @@ use crate::{
     SetAttrValueContext,
 };
 use crate::{smallbox, SmallBox};
-use crate::{try_get_element_type, OptionalOverflow, Texture, UiOptionalRect};
+use crate::{try_get_element_type, OptionalOverflow, UiTexture, UiOptionalRect};
 
 mod colors;
 
@@ -341,7 +341,7 @@ fn parse_class_inner<'a>(
                 if let Some(color) = parse_color(class) {
                     smallvec![(
                         &element_attrs::background as _,
-                        smallbox!(Texture::Color(color))
+                        smallbox!(UiTexture::Color(color))
                     ),]
                 } else {
                     default()
