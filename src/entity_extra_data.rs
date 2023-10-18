@@ -5,14 +5,14 @@ use bevy::utils::{default, HashMap};
 use smallvec::SmallVec;
 
 use crate::element_core::AttrValue;
+use crate::SmallBox;
 use crate::smallbox::S1;
 use crate::tailwind::TailwindClassItem;
-use crate::SmallBox;
 
 pub type AttrSetBits = u64;
 pub type AttrIndex = u8;
 
-pub fn get_all_prop_indecs() -> impl Iterator<Item = AttrIndex> {
+pub fn get_all_prop_indecs() -> impl Iterator<Item=AttrIndex> {
     let bit_count = (std::mem::size_of::<AttrSetBits>() * 8) as AttrIndex;
     0..bit_count
 }
@@ -70,7 +70,7 @@ impl EntityExtraData {
         (self.class_attr_is_set >> attr_index) & 1 == 1
     }
 
-    pub fn iter_set_class_attr_indices(&self) -> impl Iterator<Item = AttrIndex> + 'static {
+    pub fn iter_set_class_attr_indices(&self) -> impl Iterator<Item=AttrIndex> + 'static {
         let num = self.class_attr_is_set;
         get_all_prop_indecs()
             .filter(move |i| (num >> i) & 1 == 1)
@@ -79,7 +79,7 @@ impl EntityExtraData {
     pub fn iter_class_attr_indices_exclude(
         &self,
         bits: AttrSetBits,
-    ) -> impl Iterator<Item = AttrIndex> + 'static {
+    ) -> impl Iterator<Item=AttrIndex> + 'static {
         let num = self.class_attr_is_set & !bits;
         get_all_prop_indecs().filter(move |i| (num >> i) & 1 == 1)
     }

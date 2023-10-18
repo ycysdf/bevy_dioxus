@@ -7,16 +7,16 @@ use bevy::ui::Val;
 
 use crate::prelude::Reflect;
 use crate::smallbox;
-use crate::smallbox::S1;
 use crate::SmallBox;
+use crate::smallbox::S1;
 
 pub trait AttrValue: Reflect + Send + Sync + 'static // where Option<Self>: From<DomAttributeValue>
 {
     fn clone_att_value(&self) -> SmallBox<dyn AttrValue, S1>;
     fn default_value() -> Self
-    where
-        Self: Sized;
-    fn merge_value(&mut self, _value: Self) where Self:Sized {}
+        where
+            Self: Sized;
+    fn merge_value(&mut self, _value: Self) where Self: Sized {}
 }
 
 impl Clone for SmallBox<dyn AttrValue, S1> {
@@ -78,8 +78,8 @@ impl<T: AttrValue + TypePath + FromReflect + Clone> AttrValue for Option<T> {
     }
 
     fn default_value() -> Self
-    where
-        Self: Sized,
+        where
+            Self: Sized,
     {
         <Self as Default>::default()
     }
@@ -91,8 +91,8 @@ impl<T: Asset> AttrValue for Handle<T> {
     }
 
     fn default_value() -> Self
-    where
-        Self: Sized,
+        where
+            Self: Sized,
     {
         <Self as Default>::default()
     }

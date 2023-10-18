@@ -2,11 +2,13 @@ use std::rc::Rc;
 
 pub use checkbox::*;
 pub use selectable_list::*;
+pub use dropdown::*;
 
 use crate::prelude::*;
 
 mod checkbox;
 mod selectable_list;
+mod dropdown;
 
 pub fn use_state_change<T: PartialEq + 'static>(
     cx: &ScopeState,

@@ -5,21 +5,29 @@ use bevy::ecs::world::EntityMut;
 use bevy::prelude::World;
 use bevy::reflect::{Reflect, ReflectFromPtr};
 
-use crate::element_core::ElementAttrUntyped;
-use crate::prelude::{warn, AppTypeRegistry, Entity};
 use crate::{ElementCompositeAttrUntyped, ReflectExtension};
+use crate::element_core::ElementAttrUntyped;
+use crate::entity_extra_data::AttrIndex;
+use crate::prelude::{AppTypeRegistry, Entity, warn};
 
 pub trait ElementTypeUnTyped: Reflect {
-    fn name(&self) -> &'static str;
+    fn tag_name(&self) -> &'static str;
     fn namespace(&self) -> Option<&'static str>;
 
-    fn attrs(&self) -> &'static [&'static dyn ElementAttrUntyped];
+    fn attrs(&self) -> &'static [&'static [&'static dyn ElementAttrUntyped]];
 
     fn attr(&self, attr_name: &str) -> Option<&'static dyn ElementAttrUntyped>;
-    fn composite_attrs(&self) -> &'static [&'static dyn ElementCompositeAttrUntyped];
+    fn composite_attrs(&self) -> &'static [&'static [&'static dyn ElementCompositeAttrUntyped]];
     fn composite_attr(&self, attr_name: &str) -> Option<&'static dyn ElementCompositeAttrUntyped>;
-    fn attr_by_index(&self, index: u8) -> &'static dyn ElementAttrUntyped {
-        self.attrs()[index as usize]
+    fn attr_by_index(&self, index: AttrIndex) -> &'static dyn ElementAttrUntyped {
+        let mut index = index as usize;
+        for attrs in self.attrs() {
+            if index < attrs.len() {
+                return attrs[index];
+            }
+            index -= attrs.len();
+        }
+        unreachable!();
     }
     fn spawn<'w>(&self, world: &'w mut World) -> EntityMut<'w>;
     fn try_insert_no_reflect_components(
@@ -34,7 +42,7 @@ pub trait ElementTypeUnTyped: Reflect {
 
 impl<T: ElementTypeBase + ElementType> ElementTypeUnTyped for T {
     #[inline]
-    fn name(&self) -> &'static str {
+    fn tag_name(&self) -> &'static str {
         T::TAG_NAME
     }
 
@@ -44,7 +52,7 @@ impl<T: ElementTypeBase + ElementType> ElementTypeUnTyped for T {
     }
 
     #[inline]
-    fn attrs(&self) -> &'static [&'static dyn ElementAttrUntyped] {
+    fn attrs(&self) -> &'static [&'static [&'static dyn ElementAttrUntyped]] {
         T::ATTRS
     }
 
@@ -54,7 +62,7 @@ impl<T: ElementTypeBase + ElementType> ElementTypeUnTyped for T {
     }
 
     #[inline]
-    fn composite_attrs(&self) -> &'static [&'static dyn ElementCompositeAttrUntyped] {
+    fn composite_attrs(&self) -> &'static [&'static [&'static dyn ElementCompositeAttrUntyped]] {
         T::COMPOSITE_ATTRS
     }
 
@@ -90,16 +98,43 @@ impl<T: ElementTypeBase + ElementType> ElementTypeUnTyped for T {
 pub trait ElementTypeBase: Reflect {
     const TAG_NAME: &'static str;
     const NAME_SPACE: Option<&'static str> = None;
-    const ATTRS: &'static [&'static dyn ElementAttrUntyped];
-    const COMPOSITE_ATTRS: &'static [&'static dyn ElementCompositeAttrUntyped];
-    const NAME: &'static str = Self::TAG_NAME;
+    const ATTRS: &'static [&'static [&'static dyn ElementAttrUntyped]];
+    const COMPOSITE_ATTRS: &'static [&'static [&'static dyn ElementCompositeAttrUntyped]];
 
     fn attr(attr_name: &str) -> Option<&'static dyn ElementAttrUntyped> {
-        Self::ATTRS.iter().find(|n| n.name() == attr_name).copied()
+        use bevy::utils::HashMap;
+        static ATTRS: std::sync::OnceLock<
+            HashMap<&'static str, &'static dyn crate::ElementAttrUntyped>,
+        > = std::sync::OnceLock::new();
+        let map = ATTRS.get_or_init(|| {
+            let mut map: HashMap<&'static str, &'static dyn crate::ElementAttrUntyped> =
+                HashMap::new();
+            for attrs in Self::ATTRS {
+                for attr in *attrs {
+                    map.insert(attr.attr_name(), *attr);
+                }
+            }
+            map
+        });
+        map.get(attr_name).map(|n| *n)
     }
 
     fn composite_attr(attr_name: &str) -> Option<&'static dyn ElementCompositeAttrUntyped> {
-        Self::COMPOSITE_ATTRS.iter().find(|n| n.name() == attr_name).copied()
+        use bevy::utils::HashMap;
+        static ATTRS: std::sync::OnceLock<
+            HashMap<&'static str, &'static dyn crate::ElementCompositeAttrUntyped>,
+        > = std::sync::OnceLock::new();
+        let map = ATTRS.get_or_init(|| {
+            let mut map: HashMap<&'static str, &'static dyn crate::ElementCompositeAttrUntyped> =
+                HashMap::new();
+            for attrs in Self::COMPOSITE_ATTRS {
+                for attr in *attrs {
+                    map.insert(attr.name(), *attr);
+                }
+            }
+            map
+        });
+        map.get(attr_name).map(|n| *n)
     }
 }
 

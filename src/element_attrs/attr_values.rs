@@ -1,20 +1,18 @@
 use bevy::asset::Asset;
-use bevy::ecs::world::EntityMut;
 use bevy::prelude::*;
 use bevy::reflect::TypePath;
 use bevy::text::BreakLineOn;
+use dioxus::prelude::{AnyValue, IntoAttributeValue};
 use serde::{Deserialize, Serialize};
 
+use crate::{
+    ElementTypeUnTyped, from_str, impl_default_attr_value, MyFromStr, smallbox,
+    SmallBox,
+};
 use crate::dom_commands::DomAttributeValue;
 use crate::element_core::AttrValue;
-use crate::entity_extra_data::{EntitiesExtraData, EntityExtraData};
 use crate::smallbox::S1;
 use crate::tailwind::{parse_color, parse_size_val};
-use crate::{
-    from_str, get_element_type, impl_default_attr_value, smallbox, ElementTypeUnTyped, MyFromStr,
-    ReflectTextStyledElementType, SmallBox, TextStyledElementType,
-};
-use dioxus::prelude::{AnyValue, IntoAttributeValue};
 
 #[derive(PartialEq, Eq, Debug, Deref, DerefMut, Clone, Copy)]
 pub struct Attr<T>(pub T);
@@ -620,6 +618,7 @@ impl MyFromStr for FlexWrap {
         }
     }
 }
+
 impl MyFromStr for Visibility {
     fn from_str(s: &str) -> Option<Self> {
         match s {
@@ -641,6 +640,7 @@ impl MyFromStr for BreakLineOn {
         }
     }
 }
+
 impl MyFromStr for TextAlignment {
     fn from_str(s: &str) -> Option<Self> {
         match s {

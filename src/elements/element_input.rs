@@ -9,14 +9,13 @@ use bevy::reflect::Reflect;
 use bevy_cosmic_edit::*;
 
 use input_attrs::*;
+use crate::input;
 
 use crate::{
     ElementType,
-    impl_element_type_base,
-    ReflectTextStyledElementType,
-    SetAttrValueContext,
     prelude::*,
-    TextStyledElementType
+    SetAttrValueContext,
+    TextStyledElementType,
 };
 
 pub fn bevy_color_to_cosmic(color: Color) -> CosmicColor {
@@ -27,13 +26,6 @@ pub fn bevy_color_to_cosmic(color: Color) -> CosmicColor {
         (color.a() * 255.) as u8,
     )
 }
-
-impl_element_type_base!(
-    #[derive(Reflect, Debug, Clone, Copy)]
-    #[reflect(TextStyledElementType)]
-    input,
-    text_value
-);
 
 impl ElementType for input {
     fn spawn<'w>(&self, world: &'w mut World) -> EntityMut<'w> {
@@ -135,6 +127,7 @@ impl TextStyledElementType for input {
             return;
         };
         metrics.font_size = v;
+        metrics.line_height = v;
     }
 
     fn set_text_color(
@@ -183,8 +176,6 @@ impl TextStyledElementType for input {
 }
 
 pub mod input_attrs {
-    use crate::ATTR_COUNT;
-
     use super::*;
 
     pub struct text_value;
@@ -193,7 +184,6 @@ pub mod input_attrs {
         type Value = String;
 
         const TAG_NAME: &'static str = stringify!(value);
-        const INDEX: u8 = ATTR_COUNT + 0;
 
         fn set_value(&self, context: &mut SetAttrValueContext, p_value: impl Into<Self::Value>) {
             if let Some(mut t) = context.entity_ref.get_mut::<CosmicText>() {

@@ -4,11 +4,15 @@ use bevy::core::Name;
 use bevy::ecs::system::Command;
 use bevy::hierarchy::BuildWorldChildren;
 use bevy::prelude::{
-    default, error, AppTypeRegistry, Color, DespawnRecursiveExt, Entity, Mut, NodeBundle, Reflect,
+    AppTypeRegistry, Color, default, DespawnRecursiveExt, Entity, error, Mut, NodeBundle, Reflect,
     SpatialBundle, Text, TextBundle, TextSection, TextStyle, Visibility, World,
 };
 use dioxus::core::ElementId;
 
+use crate::{
+    ecs_fns, elements, ElementTypeBase, get_element_type, NodeTemplate, SetAttrValueContext,
+    TemplateWorld,
+};
 use crate::dom_template::{DomTemplate, DomTemplateAttribute, DomTemplateNode};
 use crate::ecs_fns::{insert_after, insert_before, WorldExtension};
 use crate::entity_extra_data::{EntitiesExtraData, EntityExtraData};
@@ -17,10 +21,6 @@ use crate::prelude::dioxus_elements::events::{
 };
 use crate::prelude::warn;
 use crate::vdm_data::{TemplateData, VDomData};
-use crate::{
-    ecs_fns, elements, get_element_type, ElementTypeBase, NodeTemplate, SetAttrValueContext,
-    TemplateWorld,
-};
 
 pub fn create_template_node(
     template_world: &mut World,
@@ -102,7 +102,7 @@ pub fn create_template_node(
                     ..default()
                 }),
             );
-            entities_extra_data.insert(entity_ref.id(), EntityExtraData::new(elements::text::NAME));
+            entities_extra_data.insert(entity_ref.id(), EntityExtraData::new(elements::text::TAG_NAME));
             entity_ref.id()
         }
         DomTemplateNode::Dynamic { id } => {
@@ -125,7 +125,7 @@ pub fn create_template_node(
                 ),
                 ..default()
             });
-            entities_extra_data.insert(entity_ref.id(), EntityExtraData::new(elements::text::NAME));
+            entities_extra_data.insert(entity_ref.id(), EntityExtraData::new(elements::text::TAG_NAME));
             entity_ref.id()
         }
     }
@@ -450,7 +450,7 @@ impl Command for CreateTextNode {
                     },
                 ),
                 ..default()
-            },));
+            }, ));
             let text_entity = text_entity_ref.id();
             vdom_data.element_id_to_entity.insert(self.id, text_entity);
             vdom_data.loaded_node_stack.push(text_entity);
@@ -526,6 +526,15 @@ impl From<DomAttributeValue> for Option<f32> {
             DomAttributeValue::Text(value) => Some(value.parse().unwrap_or_default()),
             DomAttributeValue::Int(value) => Some(value as f32),
             DomAttributeValue::Float(value) => Some(value as f32),
+            _ => None,
+        }
+    }
+}
+
+impl From<DomAttributeValue> for Option<String> {
+    fn from(value: DomAttributeValue) -> Self {
+        match value {
+            DomAttributeValue::Text(value) => Some(value),
             _ => None,
         }
     }

@@ -9,16 +9,16 @@ use smallvec::{smallvec, SmallVec};
 
 pub use colors::*;
 
-use crate::element_core::AttrValue;
-use crate::entity_extra_data::get_all_prop_indecs;
-use crate::prelude::{warn, TextAlignment};
-use crate::smallbox::S1;
 use crate::{
-    element_attrs, from_str, get_element_type, ElementAttrUntyped, ElementTypeUnTyped,
+    element_attrs, ElementAttrUntyped, ElementTypeUnTyped, from_str, get_element_type,
     SetAttrValueContext,
 };
 use crate::{smallbox, SmallBox};
-use crate::{try_get_element_type, OptionalOverflow, UiTexture, UiOptionalRect};
+use crate::UiTexture;
+use crate::element_core::AttrValue;
+use crate::entity_extra_data::get_all_prop_indecs;
+use crate::prelude::{TextAlignment, warn};
+use crate::smallbox::S1;
 
 mod colors;
 

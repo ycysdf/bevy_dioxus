@@ -53,7 +53,9 @@ pub fn Root(cx: Scope) -> Element {
     render! {
         view {
             class: "p-4 flex-col mt-2 gap-2 text-red",
-            input{}
+            input{
+                class: "text-38 h-40"
+            }
         }
     }
 }

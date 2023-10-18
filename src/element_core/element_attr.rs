@@ -1,12 +1,17 @@
-use crate::DioxusAttributeDescription;
 use crate::dom_commands::DomAttributeValue;
 use crate::element_attrs::SetAttrValueContext;
 use crate::element_core::AttrValue;
-use crate::SmallBox;
+use crate::entity_extra_data::AttrIndex;
 use crate::smallbox::S1;
+use crate::DioxusAttributeDescription;
+use crate::SmallBox;
+
+pub trait HasIndex {
+    const INDEX: AttrIndex;
+}
 
 pub trait ElementAttrUntyped: Send + Sync {
-    fn name(&self) -> &'static str;
+    fn attr_name(&self) -> &'static str;
     fn namespace(&self) -> Option<&'static str>;
     fn volatile(&self) -> bool;
 
@@ -27,11 +32,11 @@ pub trait ElementAttrUntyped: Send + Sync {
 }
 
 impl<T: ElementAttr> ElementAttrUntyped for T
-    where
-        Option<T::Value>: From<DomAttributeValue>,
+where
+    Option<T::Value>: From<DomAttributeValue>,
 {
     #[inline]
-    fn name(&self) -> &'static str {
+    fn attr_name(&self) -> &'static str {
         T::NAME
     }
 
@@ -52,7 +57,7 @@ impl<T: ElementAttr> ElementAttrUntyped for T
 
     #[inline]
     fn index(&self) -> u8 {
-        T::INDEX
+        <T as HasIndex>::INDEX
     }
 
     #[inline]
@@ -80,9 +85,9 @@ impl<T: ElementAttr> ElementAttrUntyped for T
     }
 }
 
-pub trait ElementAttr: Send + Sync
-    where
-        Option<Self::Value>: From<DomAttributeValue>,
+pub trait ElementAttr: HasIndex + Send + Sync
+where
+    Option<Self::Value>: From<DomAttributeValue>,
 {
     type Value: AttrValue + Sized;
 
@@ -92,7 +97,6 @@ pub trait ElementAttr: Send + Sync
     const VOLATILE: bool = false;
     const ATTRIBUTE_DESCRIPTION: DioxusAttributeDescription =
         (Self::TAG_NAME, Self::NAME_SPACE, Self::VOLATILE);
-    const INDEX: u8;
 
     #[inline]
     fn set_by_attr_value(&self, context: &mut SetAttrValueContext, value: DomAttributeValue) {

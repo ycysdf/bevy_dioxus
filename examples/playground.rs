@@ -2,6 +2,7 @@
 
 use bevy_inspector_egui::quick::WorldInspectorPlugin;
 
+use bevy_dioxus::components::{Dropdown, OptionItem, SelectableListProps};
 use bevy_dioxus::{
     components::{SelectableItem, SelectableList},
     prelude::*,
@@ -38,30 +39,22 @@ fn setup(mut commands: Commands) {
 pub fn Root(cx: Scope) -> Element {
     render! {
        view {
-          class: "p-4 flex-col mt-2 gap-2 text-red",
-          SelectableList::<u32>{
-             SelectableItem::<u32>{
-                value: 0,
-                onselected: |v|{
-                    println!("SELECTED 0");
-                },
-                "Zero"
-             }
-             SelectableItem::<u32>{
-                 value: 1,
-                 onselected: |v|{
-                     println!("SELECTED 1");
-                 },
-                "One"
-             }
-             SelectableItem::<u32>{
-                 value: 2,
-                 onselected: |v|{
-                     println!("SELECTED 2");
-                 },
-                "Two"
-             }
-          }
+            class: "p-4 flex-col mt-2 gap-2 text-red",
+            "SelectableList:"
+            SelectableList::<u32>{
+                SelectableItem::<u32> {
+                    value: 0,
+                    "Zero"
+                }
+                SelectableItem::<u32> {
+                     value: 1,
+                     "One"
+                }
+                SelectableItem::<u32> {
+                     value: 2,
+                     "Two"
+                }
+            }
        }
     }
 }

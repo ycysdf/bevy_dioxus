@@ -7,7 +7,6 @@ use dioxus::core::ElementId;
 use crate::apc::{self};
 use crate::vdm_data::VDomData;
 
-
 pub trait DomEvent: EntityEvent + Clone {
     fn dom_event_name() -> &'static str;
 }
@@ -92,7 +91,7 @@ macro_rules! impl_events {
 
             $( #[$attr] )*
             #[inline]
-            pub fn $name<'a, E: crate::element_core::EventReturn<T>, T>(_cx: &'a dioxus::core::ScopeState, mut _f: impl FnMut(dioxus::core::Event<$data>) -> E + 'a) -> dioxus::core::Attribute<'a> {
+            pub fn $name<'a, E: crate::element_core::EventReturn<T>, T>(_cx: &'a dioxus::core::ScopeState, mut _f: impl FnMut(dioxus::core::Event<$data>) -> E + 'a) -> dioxus::core::MountedAttribute<'a> {
                 dioxus::core::Attribute::new(
                     stringify!($name),
                     _cx.listener(move |e: dioxus::core::Event<$data>| {
@@ -100,7 +99,7 @@ macro_rules! impl_events {
                     }),
                     None,
                     false,
-                )
+                ).into()
             }
         )*
     };

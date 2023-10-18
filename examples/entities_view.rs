@@ -4,6 +4,7 @@ use bevy_dioxus::prelude::*;
 
 fn main() {
     let mut app = App::new();
+
     app.add_plugins((DefaultPlugins, DioxusPlugin::new(Root)))
         .add_systems(Startup, setup);
 
@@ -27,16 +28,13 @@ fn setup(mut commands: Commands) {
 }
 
 pub fn Root(cx: Scope) -> Element {
-    // let entity_infos = world_call(cx, |world| {
-    // });
     render! {
         WorldView{
-
         }
     }
 }
 
-#[inline_props]
+#[component]
 fn WorldView(cx: Scope) -> Element {
     let handle_refresh_click = move |_: Event<Pointer<Click>>| {
         cx.needs_update();
@@ -99,7 +97,7 @@ fn WorldView(cx: Scope) -> Element {
     }
 }
 
-#[inline_props]
+#[component]
 fn EntityItemChildren(cx: Scope, entity: Entity, level: u8) -> Element {
     let entity_infos = world_call(cx, {
         to_owned![entity];
@@ -149,7 +147,7 @@ fn get_entity_info(entity_ref: EntityRef<'static>) -> EntityInfo {
     }
 }
 
-#[inline_props]
+#[component]
 fn EntityItem(cx: Scope, data: EntityInfo, level: u8) -> Element {
     let is_expand = use_state(cx, || false);
     let handle_expand_click = |_| {

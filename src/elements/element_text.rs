@@ -12,23 +12,9 @@ use bevy::ui::widget::TextFlags;
 
 use text_attrs::*;
 
-use crate::{
-    element_attrs::ATTR_COUNT,
-    ElementType,
-    impl_element_type_base,
-    prelude::{Entity, World},
-    ReflectTextStyledElementType,
-    SetAttrValueContext,
-    TextSections,
-    TextStyledElementType,
-};
-
-impl_element_type_base!(
-    #[derive(Reflect, Debug, Clone, Copy)]
-    #[reflect(TextStyledElementType)]
-    text,
-    sections
-);
+use crate::{ElementType, SetAttrValueContext, text, TextSections, TextStyledElementType};
+use crate::ElementAttr;
+use crate::prelude::*;
 
 impl ElementType for text {
     fn spawn<'w>(&self, world: &'w mut World) -> EntityMut<'w> {
@@ -128,7 +114,6 @@ pub mod text_attrs {
 
         const TAG_NAME: &'static str = "sections";
 
-        const INDEX: u8 = ATTR_COUNT + 0;
         fn set_value(&self, context: &mut SetAttrValueContext, value: impl Into<Self::Value>) {
             if let Some(mut t) = context.entity_ref.get_mut::<Text>() {
                 t.sections = value.into().0;

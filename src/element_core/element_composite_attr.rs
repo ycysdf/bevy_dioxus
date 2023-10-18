@@ -1,14 +1,11 @@
-use crate::smallbox::S1;
-use crate::{element_attrs, OptionalTransform, SmallBox};
-use bevy::prelude::Transform;
-use bevy::ui::UiRect;
 use smallvec::SmallVec;
 
-use crate::dom_commands::DomAttributeValue;
+use crate::SmallBox;
 use crate::{
-    AttrValue, DioxusAttributeDescription, ElementAttrUntyped, SetAttrValueContext, StyleEntityExt,
-    UiOptionalRect,
+    AttrValue, DioxusAttributeDescription, ElementAttrUntyped, SetAttrValueContext,
 };
+use crate::dom_commands::DomAttributeValue;
+use crate::smallbox::S1;
 
 pub trait OptionalValue {
     fn get_count(&self) -> u8 {
@@ -40,8 +37,8 @@ pub trait ElementCompositeAttrUntyped: Send + Sync {
 }
 
 impl<T: ElementCompositeAttr> ElementCompositeAttrUntyped for T
-where
-    Option<T::Value>: From<DomAttributeValue>,
+    where
+        Option<T::Value>: From<DomAttributeValue>,
 {
     #[inline]
     fn name(&self) -> &'static str {
@@ -91,8 +88,8 @@ where
 }
 
 pub trait ElementCompositeAttr: Send + Sync
-where
-    Option<Self::Value>: From<DomAttributeValue>,
+    where
+        Option<Self::Value>: From<DomAttributeValue>,
 {
     type Value: AttrValue + OptionalValue + Sized;
 

@@ -1,15 +1,12 @@
-use crate::smallbox::S1;
-use crate::OptionalValue;
-use crate::{element_attrs, ElementCompositeAttr, OptionalTransform, SmallBox};
 use bevy::prelude::Transform;
 use bevy::ui::UiRect;
-use smallvec::SmallVec;
 
-use crate::dom_commands::DomAttributeValue;
+use crate::{element_attrs, ElementCompositeAttr, OptionalTransform};
 use crate::{
-    AttrValue, DioxusAttributeDescription, ElementAttrUntyped, SetAttrValueContext, StyleEntityExt,
+    ElementAttrUntyped, SetAttrValueContext, StyleEntityExt,
     UiOptionalRect,
 };
+use crate::OptionalValue;
 
 impl OptionalValue for UiOptionalRect {
     fn get_count(&self) -> u8 {

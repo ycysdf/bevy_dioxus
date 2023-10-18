@@ -4,24 +4,16 @@ use std::str::FromStr;
 
 use bevy::ecs::world::EntityMut;
 use bevy::prelude::*;
-use bevy::text::BreakLineOn;
-use bevy::ui;
-use bevy::ui::widget::UiImageSize;
-
-use crate::dom_commands::DomAttributeValue;
-use crate::ecs_fns::StyleEntityExt;
-use crate::element_core::ElementAttr;
-
-use crate::entity_extra_data::{EntitiesExtraData, EntityExtraData};
-use crate::tailwind::handle_classes;
-use crate::{
-    get_element_type, set_text_value, ElementTypeUnTyped, ReflectTextStyledElementType,
-    TextStyledElementType,
-};
 
 pub use attr_values::*;
-pub use composite_attrs::*;
 pub use attrs::*;
+pub use composite_attrs::*;
+
+use crate::{attrs_trait_define, composite_attrs_trait_define, ElementCompositeAttr, ElementTypeUnTyped, get_element_type};
+use crate::ecs_fns::StyleEntityExt;
+use crate::element_core::ElementAttr;
+use crate::entity_extra_data::{EntitiesExtraData, EntityExtraData};
+
 mod attr_values;
 mod attrs;
 pub mod composite_attrs;
@@ -54,23 +46,70 @@ impl<'w, 'e> SetAttrValueContext<'w, 'e> {
     pub fn element_type(&mut self) -> &'static dyn ElementTypeUnTyped {
         get_element_type(self.entity_extra_data().schema_name)
     }
-
-    pub fn get_text_element_type(&mut self) -> Option<&'static dyn TextStyledElementType> {
-        self.get_entity_text_element_type(self.entity_ref.id())
-    }
-
-    pub fn get_entity_text_element_type(
-        &mut self,
-        entity: Entity,
-    ) -> Option<&'static dyn TextStyledElementType> {
-        let schema_name = self
-            .entities_extra_data
-            .get(&entity)
-            .map(|n| n.schema_name)?;
-        let schema_type = get_element_type(schema_name);
-        let type_registry = self.type_registry.read();
-        type_registry
-            .get_type_data::<ReflectTextStyledElementType>(schema_type.type_id())
-            .and_then(|n| n.get(schema_type.as_reflect()))
-    }
 }
+
+
+attrs_trait_define!(CommonAttrs;0;
+    class,
+    name,
+    z_index,
+    background,
+    border_left,
+    border_right,
+    border_top,
+    border_bottom,
+    border_color,
+    display,
+    position_type,
+    overflow_x,
+    overflow_y,
+    direction,
+    left,
+    right,
+    top,
+    bottom,
+    width,
+    height,
+    min_width,
+    min_height,
+    max_width,
+    max_height,
+    margin_left,
+    margin_right,
+    margin_top,
+    margin_bottom,
+    padding_left,
+    padding_right,
+    padding_top,
+    padding_bottom,
+    aspect_ratio,
+    align_items,
+    justify_items,
+    align_self,
+    justify_self,
+    align_content,
+    justify_content,
+    flex_direction,
+    flex_wrap,
+    flex_grow,
+    flex_shrink,
+    flex_basis,
+    column_gap,
+    row_gap,
+    visibility,
+    transation,
+    rotation,
+    scale,
+    text_color,
+    font_size,
+    text_linebreak,
+    text_align,
+    font
+);
+
+composite_attrs_trait_define!(CommonCompositeAttrs;
+    margin,
+    padding,
+    border,
+    transform
+);
