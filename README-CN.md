@@ -2,9 +2,7 @@
 
 [Bevy](https://github.com/bevyengine/bevy) 集成 [Dioxus](https://github.com/DioxusLabs/dioxus)
 
-这是个实验项目
-
-WIP：项目处于非常早期的阶段
+**此项目已经废弃！因为我已经在开发一个新的更好的的 bevy ui 库!**
 
 ## 特点
 
