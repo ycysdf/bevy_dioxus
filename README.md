@@ -8,7 +8,7 @@
 
 [Bevy](https://github.com/bevyengine/bevy) integration [Dioxus](https://github.com/DioxusLabs/dioxus)
 
-WIP：It's an experimental project. The project is at a very early stage
+**This project has been abandoned！**
 
 ## Feature
 
